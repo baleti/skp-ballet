@@ -9,7 +9,7 @@ verified against files here; (u) are unverified.
 bytes, then an ordinary ZIP starting at the first `PK\x03\x04`. ZIP entries: `model.dat`
 (binary), `meta/meta.dat` (same TLV encoding), `materials/<name>/material.xml` (colour,
 alpha), `styles/*/style.xml`, thumbnails, `classifications/*.skc`.
-SketchUp 2013-2020 files have no ZIP (MFC CArchive stream): unsupported here.
+SketchUp 2013-2020 files have no ZIP (MFC CArchive stream): partial experimental support (skpballet/legacy.py, first geometry run, faces only; see below).
 
 ## model.dat TLV (v)
 Records: tag u16 LE, length u32 LE, payload. Container tags hold nested records (list in

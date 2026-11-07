@@ -235,3 +235,9 @@ def test_legacy_arcs_faces_match_2021_face_count():
         f = scan_faces(open(os.path.join(D, "legacy", "arcs_%s.skp" % y), "rb").read())
         assert len(f) == n21
         assert max(v[0] for fc in f for lp in fc for v in lp) == 108.0
+
+
+def test_legacy_wired_into_load_and_glb(tmp_path):
+    m = load(open_skp(os.path.join(D, "legacy", "arcs_2017.skp")))
+    assert m.counts()["faces"] == 2 and "legacy" in m.version
+    assert write_glb(m, str(tmp_path / "a.glb")) > 0

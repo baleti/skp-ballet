@@ -191,3 +191,27 @@ def scan_faces(data):
             ls.append(pts)
         out.append(ls)
     return out
+
+
+def load_legacy(skp):
+    """LegacySkp -> scene.Model with one root definition (faces only; no groups, materials or layers yet)."""
+    from .scene import Model, Definition
+    from .container import SkpError
+    try:
+        faces = scan_faces(skp.data)
+    except LegacyError as e:
+        raise SkpError("legacy file: %s" % e)
+    m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
+    d = Definition(-1, "root"); m.root = d
+    vid = {}
+    for fi, loops in enumerate(faces):
+        ls = []
+        for lp in loops:
+            ids = []
+            for p in lp:
+                ids.append(vid.setdefault(p, len(vid)))
+            ls.append(ids)
+        d.faces.append(dict(id=fi, loops=ls, mat=None, normal=None))
+    d.vertices = {i: p for p, i in vid.items()}
+    m.warnings.append("legacy 2013-2020 reader is experimental: only the first contiguous geometry run is decoded")
+    return m

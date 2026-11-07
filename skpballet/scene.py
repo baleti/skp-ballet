@@ -106,7 +106,15 @@ def _entities(ent, d, model):
 
 def load(skp):
     """Decode a model; any structural problem raises SkpError."""
-    from .container import SkpError
+    from .container import SkpError, LegacySkp
+    if isinstance(skp, LegacySkp):
+        from .legacy import load_legacy
+        try:
+            return load_legacy(skp)
+        except SkpError:
+            raise
+        except Exception as e:
+            raise SkpError("legacy file: %s: %s" % (type(e).__name__, e))
     try:
         return _load(skp)
     except SkpError:

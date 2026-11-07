@@ -30,6 +30,12 @@ class SkpFile:
         return self.read("model.dat")
 
 
+class LegacySkp:
+    """SketchUp 2013-2020 (MFC archive) file: decoded by skpballet.legacy (experimental, geometry only)."""
+    def __init__(self, version, data):
+        self.version, self.data = version, data
+
+
 def open_skp(src):
     """src: path or bytes. Raises ValueError for non-SKP or pre-2021 (MFC archive) files."""
     if isinstance(src, (bytes, bytearray)):
@@ -41,7 +47,10 @@ def open_skp(src):
         raise SkpError("not a SketchUp file (bad magic)")
     z = data.find(b"PK\x03\x04", 4, 4096)
     if z < 0:
-        raise SkpError("no embedded zip: SketchUp 2013-2020 (MFC archive) files are not supported yet")
+        v = re.search(rb"\{\x00((?:[0-9]\x00|\.\x00)+)\}\x00", data[:512])
+        if not v:
+            raise SkpError("no embedded zip and no version string: not a readable SketchUp file")
+        return LegacySkp(v.group(1).decode("utf-16-le"), bytes(data))
     m = re.search(rb"\{\x00((?:[0-9]\x00|\.\x00)+)\}\x00", data[:z])
     ver = m.group(1).decode("utf-16-le") if m else "unknown"
     try:
