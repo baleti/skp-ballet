@@ -72,3 +72,18 @@ Layer node 0x3C8C has 0x5DC (id), 0x3C8D (name, EMPTY for all 4 layers here), 0x
 (an embedded record: 0x32C8 containing id and 0x32CC string such as `Layer_Layer0`, UTF-8, non-ASCII names occur;
 probably the layer colour material) and 0x3C90 (u32 0). So `layer_names` is empty for this file; the meaning of
 0x3C8E (visibility?) is unverified (single data point).
+
+### Legacy layouts (secondary, from OpenSKP legacy.py via summary; unverified unless marked)
+
+- File start (checked on nesting_2017.skp): `FF FE FF 0E` + UTF-16 "SketchUp Model", `FF FE FF 08` + UTF-16 "{17.0.1}",
+  16 bytes (GUID-like), then `FF FE FF n` + UTF-16 source path, then the CArchive object stream (class names ASCII,
+  e.g. CVertex, CEdge, CFace, CLoop, CEdgeUse, CLayer, CComponentDefinition, CGroup, CComponentInstance, CSkpStyle).
+- Entity preamble: object ref to CAttributeContainer, then (ver>=17) u8 mask and one byte per set mask bit forming the
+  persistent id. VERIFIED for CVertex in 2017: `00 00` (null attrs), `01 20` (mask 1, pid 0x20), then f64 x,y,z in inches
+  (first vertex 40.0,0,0); next object follows as class-ref tag `16 80` (0x8016 = bit 15 | slot 0x16).
+- CVertex: early preamble, f64x3. CEdge: preamble, draw base (8 bytes, ver>=5: layer ref, material u16, hidden byte 2,
+  soft byte 5, smooth byte 6), obj CVertex x2, obj curve. CEdgeUse: early preamble, obj CEdge, u8 sense, u16 loop
+  back-ref. CLoop: early preamble, 2 flag bytes, CEdgeUse refs until u16 0. CFace: preamble, draw base, f64x4 plane,
+  u32 nloops, loops, u16 back material. CLayer: early preamble, utf16 name, hidden flag in the first byte after it.
+- CComponentDefinition is heuristic in OpenSKP (re-anchoring +-4 bytes, scanning for the thumbnail), so a clean-room
+  reader should expect to derive its own tail layout from samples.
