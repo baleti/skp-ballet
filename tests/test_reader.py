@@ -184,3 +184,11 @@ def test_glb_material_colour_linear_alpha_and_default(tmp_path):
     g = mats["glass"]; assert g["alphaMode"] == "BLEND" and g["pbrMetallicRoughness"]["baseColorFactor"][3] == 0.25
     assert abs(g["pbrMetallicRoughness"]["baseColorFactor"][0] - 0.2158605) < 1e-5   # sRGB 128 -> linear
     assert "default" in mats and len(j["meshes"][0]["primitives"]) == 3   # None and unknown id share default look
+
+
+def test_group_vs_component_flag():
+    m = load(open_skp(os.path.join(D, "nesting_2021.skp")))
+    kinds = {d.name: d.is_group for d in m.defs.values()}
+    assert kinds == {"Group": True, "Group2": True, "Shelf": False}
+    m = load(open_skp(os.path.join(D, "instance_scale_term_2021.skp")))
+    assert [d.is_group for d in m.defs.values()] == [False]

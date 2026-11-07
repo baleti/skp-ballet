@@ -155,6 +155,8 @@ def _load(skp):
                     d = Definition(did, nm.text() if nm else "")
                     g = dn.first(0x157D)
                     d.guid = g.payload.hex() if g else ""
+                    gf = dn.first(0x1583)  # 1 for groups, 0 for components (observed on 4 public definitions)
+                    d.is_group = bool(gf is not None and gf.uint())
                     _entities(ent, d, model)
                     model.defs[did] = d
     model.root = Definition(0, "<model>")

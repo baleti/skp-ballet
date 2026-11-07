@@ -28,7 +28,8 @@ def bbox(m):
 def info_json(path):
     m = scene.load(container.open_skp(path))
     out = dict(file=os.path.basename(path), version=m.version, counts=m.counts(),
-               layer_names=sorted(m.layers.values()), material_names=sorted(x["name"] for x in m.materials.values()),
+               layer_names=sorted(m.layers.values()),
+               groups=sum(1 for d in m.defs.values() if d.is_group), components=sum(1 for d in m.defs.values() if not d.is_group), material_names=sorted(x["name"] for x in m.materials.values()),
                bbox_m=bbox(m), warnings=m.warnings)
     print(json.dumps(out, indent=2))
     return m
@@ -43,7 +44,7 @@ def info(path):
         print("%-10s %d" % (k + ":", v))
     top = sorted(m.defs.values(), key=lambda d: -len(d.faces))[:10]
     for d in top:
-        print("  def %-30s faces=%d edges=%d instances=%d" % (d.name or "<group %s>" % d.id, len(d.faces), len(d.edges), len(d.instances)))
+        print("  %-9s %-30s faces=%d edges=%d instances=%d" % ("group" if d.is_group else "component", d.name or "<unnamed %s>" % d.id, len(d.faces), len(d.edges), len(d.instances)))
     print("layers:    " + ", ".join(sorted(m.layers.values())[:20]))
     print("materials: " + ", ".join(sorted(x["name"] for x in m.materials.values())[:20]))
     for w in m.warnings[:5]:
