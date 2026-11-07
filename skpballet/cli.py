@@ -1,8 +1,9 @@
 """skp-ballet FILE.skp            print info and open the viewer
-skp-ballet info FILE.skp       print contents only
+skp-ballet info [--json] FILE  print contents only (bbox in metres, Y-up)
 skp-ballet convert FILE [OUT]  write a .glb"""
 import argparse
 import functools
+import json
 import http.server
 import os
 import sys
@@ -11,6 +12,26 @@ import threading
 import webbrowser
 
 from . import container, scene, mesh
+
+
+def bbox(m):
+    """Bounding box [min, max] in metres (Y-up) of the instance-expanded geometry, or None."""
+    buf = []
+    res = mesh.flatten(m, lines=buf)
+    pts = [v for b in res.values() for v in b] + buf
+    if not pts:
+        return None
+    xs, ys, zs = pts[0::3], pts[1::3], pts[2::3]
+    return [[min(xs), min(ys), min(zs)], [max(xs), max(ys), max(zs)]]
+
+
+def info_json(path):
+    m = scene.load(container.open_skp(path))
+    out = dict(file=os.path.basename(path), version=m.version, counts=m.counts(),
+               layer_names=sorted(m.layers.values()), material_names=sorted(x["name"] for x in m.materials.values()),
+               bbox_m=bbox(m), warnings=m.warnings)
+    print(json.dumps(out, indent=2))
+    return m
 
 
 def info(path):
@@ -79,6 +100,8 @@ def main(argv=None):
         rest = a[1:]
     ap = argparse.ArgumentParser(prog="skp-ballet " + cmd)
     ap.add_argument("file")
+    if cmd == "info":
+        ap.add_argument("--json", action="store_true")
     if cmd == "convert":
         ap.add_argument("out", nargs="?")
     if cmd == "open":
@@ -86,6 +109,9 @@ def main(argv=None):
         ap.add_argument("--no-browser", action="store_true")
     ns = ap.parse_args(rest)
     try:
+        if cmd == "info" and ns.json:
+            info_json(ns.file)
+            return 0
         m = info(ns.file)
         if cmd == "info":
             return 0

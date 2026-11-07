@@ -125,3 +125,11 @@ def test_corrupt_inputs_fail_cleanly():
             mesh.flatten(scene.load(container.open_skp(c)))
         except container.SkpError:
             pass
+
+
+def test_cli_info_json(capsys):
+    from skpballet.cli import main
+    assert main(["info", "--json", os.path.join(D, "nesting_2021.skp")]) == 0
+    j = json.loads(capsys.readouterr().out)
+    assert j["counts"]["faces"] > 0 and len(j["bbox_m"]) == 2
+    assert all(a <= b for a, b in zip(*j["bbox_m"]))
