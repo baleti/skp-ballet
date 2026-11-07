@@ -226,3 +226,12 @@ def test_legacy_first_face_nesting_2017_2020():
     for y in ("2017", "2020"):
         f = scan_faces(open(os.path.join(D, "legacy", "nesting_%s.skp" % y), "rb").read())
         assert f == [[[(40.0, 0.0, 0.0), (50.0, 0.0, 0.0), (50.0, 10.0, 0.0), (40.0, 10.0, 0.0)]]]
+
+
+def test_legacy_arcs_faces_match_2021_face_count():
+    from skpballet.legacy import scan_faces
+    n21 = 2   # arcs_2021.skp has 2 faces; x extent 108 in = 2.7432 m matches its bbox
+    for y in ("2017", "2020"):
+        f = scan_faces(open(os.path.join(D, "legacy", "arcs_%s.skp" % y), "rb").read())
+        assert len(f) == n21
+        assert max(v[0] for fc in f for lp in fc for v in lp) == 108.0

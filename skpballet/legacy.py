@@ -102,6 +102,9 @@ class _R:
         self.u16()   # layer id (inline layer objects unsupported)
 
     def body(self, name):
+        if name == "CArcCurve":
+            self.pre(); self.p += 5
+            return ("arc",) + self.f64s(14)
         if name == "CAttributeContainer":
             self.pre(); out = []
             while True:
@@ -126,8 +129,6 @@ class _R:
         if name == "CEdge":
             self.pre(); self.drawbase()
             a = self.obj(); b = self.obj(); c = self.obj()
-            if c is not None:
-                raise LegacyError("curve edges not supported")
             self.nedges += 1
             return ("e", a, b)
         if name == "CEdgeUse":
