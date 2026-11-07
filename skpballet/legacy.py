@@ -110,9 +110,10 @@ class _R:
 
 def scan_faces(data):
     """Parse the first run of face entities (flat sample models). Returns list of faces: each loop list of xyz in inches."""
-    m = re.search(rb"\xff\xff.\x00.\x00CFace", data)
+    m = min((x for x in (re.search(rb"\xff\xff.\x00.\x00" + c, data) for c in
+             (b"CFace", b"CEdge\x00", b"CVertex", b"CLoop")) if x), key=lambda x: x.start(), default=None)
     if not m:
-        raise LegacyError("no CFace declaration")
+        raise LegacyError("no geometry class declaration")
     best = None
     for base in range(1, 400):   # absolute slot base is unknown: take the first that parses
         r = _R(data, m.start()); r.slot = base
@@ -122,13 +123,14 @@ def scan_faces(data):
                 f = r.obj()
             except (LegacyError, IndexError, struct.error):
                 break
-            if f is None or f[0] != "f":
+            if f is None or f[0] not in "fe":
                 break
             faces.append(f)
         if best is None or len(faces) > len(best):
             best = faces
     faces = best
     out = []
+    faces = [f for f in faces if f[0] == "f"]
     for _, plane, loops in faces:
         ls = []
         for lp in loops:
