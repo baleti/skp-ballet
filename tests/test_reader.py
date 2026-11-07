@@ -219,3 +219,10 @@ def test_rvt_ballet_cache_consistent(f, tmp_path):
 def test_layer_records_counted_annotation_fixture():
     m = load(open_skp(os.path.join(D, "annotation_layers_vff.skp")))
     assert len(m.layers) == 4
+
+
+def test_legacy_first_face_nesting_2017_2020():
+    from skpballet.legacy import scan_faces
+    for y in ("2017", "2020"):
+        f = scan_faces(open(os.path.join(D, "legacy", "nesting_%s.skp" % y), "rb").read())
+        assert f == [[[(40.0, 0.0, 0.0), (50.0, 0.0, 0.0), (50.0, 10.0, 0.0), (40.0, 10.0, 0.0)]]]
