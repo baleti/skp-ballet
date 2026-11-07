@@ -35,3 +35,5 @@ Without the swiftshader flags the page stays on "loading..." because no WebGL co
 `skp-ballet cache FILE.skp DIR` writes an rvt-ballet style cache folder (indexed `model.glb` with per-vertex
 element index, `meta.json`, `materials.json`; one element per top-level group/component instance). View it with
 `rvt-ballet serve DIR`. No `model.sqlite` is written, so element parameter and search panels stay empty.
+The front-end's default Hidden line style renders blank for these caches (cause not isolated; not the edge batch, not
+flat geometry), while `?style=shaded` (or wireframe) in the URL shows the geometry. Verified in headless chromium on a public fixture.
