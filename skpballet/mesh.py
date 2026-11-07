@@ -165,7 +165,7 @@ def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
 
     def emit(tris_by_mat, m):
         for mat, tris in tris_by_mat.items():
-            buf = res.setdefault(mat, [])
+            buf = res.setdefault(mat if mat in model.materials else None, [])
             flip = _flips(m)
             for t in tris:
                 for p in (t[::-1] if flip else t):
@@ -195,6 +195,12 @@ def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
     return res
 
 
+def _lin(c):
+    """sRGB byte -> linear float (glTF baseColorFactor is linear)."""
+    c = c / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
 def write_glb(model, path, edges=True):
     seg = [] if edges else None
     res = flatten(model, lines=seg)
@@ -211,7 +217,7 @@ def write_glb(model, path, edges=True):
                          min=[min(xs), min(ys), min(zs)], max=[max(xs), max(ys), max(zs)]))
         mt = model.materials.get(mid, dict(name="default", rgb=(200, 200, 200), alpha=1.0))
         mats.append(dict(name=mt["name"], doubleSided=True,
-                         pbrMetallicRoughness=dict(baseColorFactor=[c / 255 for c in mt["rgb"]] + [mt["alpha"]],
+                         pbrMetallicRoughness=dict(baseColorFactor=[_lin(c) for c in mt["rgb"]] + [mt["alpha"]],
                                                    metallicFactor=0, roughnessFactor=0.9),
                          **({"alphaMode": "BLEND"} if mt["alpha"] < 1 else {})))
         prims.append(dict(attributes=dict(POSITION=len(accs) - 1), material=len(mats) - 1, mode=4))

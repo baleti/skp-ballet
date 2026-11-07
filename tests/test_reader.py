@@ -169,3 +169,18 @@ def test_mirrored_instance_keeps_outward_winding():
     mirror = normal(build([-1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0]))   # x -> -x
     # the plain triangle faces +Z (source) = +Y_up; mirrored triangle still faces +Y_up
     assert plain[1] > 0 and mirror[1] > 0
+
+
+def test_glb_material_colour_linear_alpha_and_default(tmp_path):
+    from skpballet.scene import Model, Definition
+    m = Model(); r = Definition(0); r.vertices = {1: (0, 0, 0), 2: (1, 0, 0), 3: (0, 1, 0)}
+    r.faces = [dict(id=i, loops=[[1, 2, 3]], mat=k, normal=(0, 0, 1)) for i, k in ((1, 7), (2, 8), (3, None), (4, 99))]
+    m.root = r
+    m.materials = {7: dict(name="red", rgb=(255, 0, 0), alpha=1.0), 8: dict(name="glass", rgb=(128, 128, 128), alpha=0.25)}
+    p = tmp_path / "m.glb"; write_glb(m, str(p), edges=False)
+    d = p.read_bytes(); j = json.loads(d[20:20 + struct.unpack_from("<I", d, 12)[0]])
+    mats = {x["name"]: x for x in j["materials"]}
+    assert mats["red"]["pbrMetallicRoughness"]["baseColorFactor"] == [1.0, 0.0, 0.0, 1.0]
+    g = mats["glass"]; assert g["alphaMode"] == "BLEND" and g["pbrMetallicRoughness"]["baseColorFactor"][3] == 0.25
+    assert abs(g["pbrMetallicRoughness"]["baseColorFactor"][0] - 0.2158605) < 1e-5   # sRGB 128 -> linear
+    assert "default" in mats and len(j["meshes"][0]["primitives"]) == 3   # None and unknown id share default look
