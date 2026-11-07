@@ -105,6 +105,17 @@ def _entities(ent, d, model):
 
 
 def load(skp):
+    """Decode a model; any structural problem raises SkpError."""
+    from .container import SkpError
+    try:
+        return _load(skp)
+    except SkpError:
+        raise
+    except Exception as e:
+        raise SkpError("corrupt model data (%s: %s)" % (type(e).__name__, e))
+
+
+def _load(skp):
     model = Model()
     model.version = skp.version
     top = parse_tlv(skp.model_dat)[0]

@@ -92,3 +92,22 @@ def test_viewer_server_smoke(tmp_path):
     assert urllib.request.urlopen("http://127.0.0.1:18765/model.glb").read()[:4] == b"glTF"
     assert b"three" in urllib.request.urlopen("http://127.0.0.1:18765/").read()
     assert len(urllib.request.urlopen("http://127.0.0.1:18765/vendor/three/three.module.js").read()) > 100000
+
+
+def test_corrupt_inputs_fail_cleanly():
+    """Truncated and byte-flipped files raise SkpError only (no IndexError, zlib.error, hangs)."""
+    import os, random
+    from skpballet import container, scene, mesh
+    d = open(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"), "rb").read()
+    rnd = random.Random(1)
+    cases = [d[:int(len(d) * f)] for f in (0, .01, .1, .5, .9, .99)]
+    for _ in range(60):
+        b = bytearray(d)
+        for _ in range(rnd.choice((1, 3, 20))):
+            b[rnd.randrange(len(b))] = rnd.randrange(256)
+        cases.append(bytes(b))
+    for c in cases:
+        try:
+            mesh.flatten(scene.load(container.open_skp(c)))
+        except container.SkpError:
+            pass
