@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>skp-ballet</title>
+<style>html,body{margin:0;height:100%;background:#1c1f24;color:#ddd;font:13px sans-serif}#i{position:fixed;left:8px;top:8px}</style>
+<div id="i">loading...</div>
+<script type="importmap">{"imports":{"three":"/vendor/three/three.module.js","three/":"/vendor/three/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/loaders/GLTFLoader.js';
+const r=new THREE.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);document.body.appendChild(r.domElement);
+const s=new THREE.Scene();s.background=new THREE.Color(0x1c1f24);
+s.add(new THREE.HemisphereLight(0xffffff,0x444455,1.6));const dl=new THREE.DirectionalLight(0xffffff,1.5);dl.position.set(1,2,1);s.add(dl);
+const cam=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.1,100000);
+const oc=new OrbitControls(cam,r.domElement);
+new GLTFLoader().load('/model.glb',g=>{s.add(g.scene);
+ const b=new THREE.Box3().setFromObject(g.scene),c=b.getCenter(new THREE.Vector3()),z=b.getSize(new THREE.Vector3()).length()||1;
+ cam.position.copy(c).add(new THREE.Vector3(z*.7,z*.5,z*.7));oc.target.copy(c);oc.update();
+ document.getElementById('i').textContent=(window.INFO||'')+' '+z.toFixed(1)+' m extent'},undefined,e=>document.getElementById('i').textContent='error '+e);
+addEventListener('resize',()=>{r.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()});
+(function a(){requestAnimationFrame(a);oc.update();r.render(s,cam)})();
+</script>

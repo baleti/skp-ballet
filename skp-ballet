@@ -1,0 +1,4 @@
+#!/bin/sh
+# skp-ballet FILE.skp | info FILE | convert FILE [OUT.glb]
+D="$(dirname "$(readlink -f "$0")")"
+exec python3 -c "import sys; sys.path.insert(0,'$D'); from skpballet.cli import main; sys.exit(main())" "$@"
