@@ -47,12 +47,10 @@ def parse_tlv(data, start=0, end=None, depth=0):
         q = p + 6 + ln
         if q > end:
             break
-        kids = []
         if tag in CONTAINERS and ln:
-            try:
-                kids = parse_tlv(data, p + 6, q, depth + 1)
-            except ValueError:
-                raise
-        out.append(Node(tag, data[p + 6 : q], kids))
+            # container payload is not copied (children carry the data); avoids O(depth*size) copying
+            out.append(Node(tag, b"", parse_tlv(data, p + 6, q, depth + 1)))
+        else:
+            out.append(Node(tag, data[p + 6 : q], []))
         p = q
     return out
