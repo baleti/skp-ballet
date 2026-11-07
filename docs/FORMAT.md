@@ -48,3 +48,20 @@ triangulate to an area >0.1 % off the polygon area).
 2. next: per-entity layer/hidden flags, back material, texture images and UVs, edges as lines.
 3. then: construction lines/points, text, dimensions, sections, scenes (camera), attributes.
 4. later: SketchUp 2013-2020 MFC archive reader; writing (only after read round-trips are exact).
+
+## SketchUp 2013-2020 (legacy MFC CArchive), research notes (not implemented)
+
+Source: public docs of the MIT-licensed OpenSKP project (secondary, as reported; not verified by us, no
+legacy sample available on this host). No code copied.
+
+- No ZIP: one uncompressed MFC CArchive object stream with a single global 1-based store map.
+- Object tags u16 LE: 0 null; 0xFFFF new class (u16 schema, u16 name length, ASCII name); bit 15 set = class-ref
+  to a new object; 0x7FFF escapes to a u32 (bit 31 = class-ref, else back-ref); other values are object back-refs.
+- Strings: marker `FF FE FF`, length byte (0xFF escapes to u16, 0xFFFF to u32), UTF-16LE; class names ASCII.
+- Numbers little-endian; coordinates f64 inches.
+- Per-version differences: v16 has no persistent-id mask in entity preambles, v17+ has one; some entity sizes
+  differ between v16 and v17+. Internal versions 13-20 map to SketchUp 2013-2020.
+- Pitfalls reported: annotations burn store-map indices without writing bytes; round-profile records skipped;
+  OpenSKP parses only part of its old test files (8/14, 11/15 in two docs), so expect variance.
+- Plan: first implement the tag/back-ref reader over a public legacy sample (none yet), verify counts against the
+  2021 re-save of the same model, only then widen versions.
