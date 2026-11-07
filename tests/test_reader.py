@@ -146,3 +146,26 @@ def test_vendor_path_cannot_escape(tmp_path):
         r = safe_join(str(root), bad)
         assert not os.path.exists(r), bad
         assert os.path.realpath(r).startswith(os.path.realpath(str(root))), bad
+
+
+def test_mirrored_instance_keeps_outward_winding():
+    """A mirrored copy of a triangle must keep the same face direction (winding reversed)."""
+    from skpballet.scene import Model, Definition
+    from skpballet.mesh import IDENT
+
+    def normal(buf):
+        a, b, c = [buf[i:i + 3] for i in (0, 3, 6)]
+        u = [b[i] - a[i] for i in range(3)]; v = [c[i] - a[i] for i in range(3)]
+        return (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+
+    def build(matrix):
+        m = Model(); r = Definition(1); sub = Definition(2)
+        sub.vertices = {1: (0, 0, 0), 2: (1, 0, 0), 3: (0, 1, 0)}
+        sub.faces = [dict(id=1, loops=[[1, 2, 3]], mat=None, normal=(0, 0, 1))]
+        r.instances = [dict(def_id=2, matrix=matrix, id=9)]
+        m.root = r; m.defs = {2: sub}
+        return flatten(m)[None][-9:]
+    plain = normal(build(list(IDENT)))
+    mirror = normal(build([-1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0]))   # x -> -x
+    # the plain triangle faces +Z (source) = +Y_up; mirrored triangle still faces +Y_up
+    assert plain[1] > 0 and mirror[1] > 0

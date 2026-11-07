@@ -125,6 +125,15 @@ def _mul(m, v):
             s * (x * m[2] + y * m[5] + z * m[8] + m[11]))
 
 
+def _flips(m):
+    """True if the transform mirrors (negative determinant), which reverses triangle winding."""
+    a = m[:9]
+    det = (a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6])
+           + a[2] * (a[3] * a[7] - a[4] * a[6]))
+    s = m[12] or 1.0
+    return det * s * s * s < 0
+
+
 def _compose(a, b):
     """matrix that applies b first, then a (scale folded into the 3x3 and translation)."""
     o = _mul(a, _mul(b, (0, 0, 0)))
@@ -157,8 +166,9 @@ def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
     def emit(tris_by_mat, m):
         for mat, tris in tris_by_mat.items():
             buf = res.setdefault(mat, [])
+            flip = _flips(m)
             for t in tris:
-                for p in t:
+                for p in (t[::-1] if flip else t):
                     x, y, z = _mul(m, p)
                     buf.extend((x * INCH, z * INCH, -y * INCH))
                 count[0] += 1
