@@ -1,6 +1,7 @@
 """skp-ballet FILE.skp            print info and open the viewer
 skp-ballet info [--json] FILE  print contents only (bbox in metres, Y-up)
-skp-ballet convert FILE [OUT]  write a .glb"""
+skp-ballet convert FILE [OUT]  write a .glb
+skp-ballet cache FILE DIR      write an rvt-ballet cache folder (view with: rvt-ballet serve DIR)"""
 import argparse
 import functools
 import json
@@ -110,7 +111,7 @@ def main(argv=None):
     a = list(sys.argv[1:] if argv is None else argv)
     if not a or a[0] in ("-h", "--help"):
         print(__doc__); return 0
-    cmd = a[0] if a[0] in ("info", "convert") else "open"
+    cmd = a[0] if a[0] in ("info", "convert", "cache") else "open"
     rest = a[1:] if cmd != "open" or a[0] == "open" else a
     if a[0] == "open":
         rest = a[1:]
@@ -120,6 +121,8 @@ def main(argv=None):
         ap.add_argument("--json", action="store_true")
     if cmd == "convert":
         ap.add_argument("out", nargs="?")
+    if cmd == "cache":
+        ap.add_argument("outdir")
     if cmd == "open":
         ap.add_argument("--port", type=int, default=0)
         ap.add_argument("--no-browser", action="store_true")
@@ -130,6 +133,10 @@ def main(argv=None):
             return 0
         m = info(ns.file)
         if cmd == "info":
+            return 0
+        if cmd == "cache":
+            from . import cache
+            print(cache.write_cache(m, ns.outdir, os.path.basename(ns.file)), "->", ns.outdir)
             return 0
         if cmd == "convert":
             out = ns.out or os.path.splitext(ns.file)[0] + ".glb"

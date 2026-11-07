@@ -29,3 +29,9 @@ No GPU needed. With the viewer running (`skp-ballet FILE --no-browser --port 187
       --window-size=900,700 --screenshot=out.png http://127.0.0.1:18777/
 
 Without the swiftshader flags the page stays on "loading..." because no WebGL context can be created.
+
+## rvt-ballet front-end
+
+`skp-ballet cache FILE.skp DIR` writes an rvt-ballet style cache folder (indexed `model.glb` with per-vertex
+element index, `meta.json`, `materials.json`; one element per top-level group/component instance). View it with
+`rvt-ballet serve DIR`. No `model.sqlite` is written, so element parameter and search panels stay empty.

@@ -192,3 +192,25 @@ def test_group_vs_component_flag():
     assert kinds == {"Group": True, "Group2": True, "Shelf": False}
     m = load(open_skp(os.path.join(D, "instance_scale_term_2021.skp")))
     assert [d.is_group for d in m.defs.values()] == [False]
+
+
+@pytest.mark.parametrize("f", FILES)
+def test_rvt_ballet_cache_consistent(f, tmp_path):
+    from skpballet.cache import write_cache
+    m = load(open_skp(f)); r = write_cache(m, str(tmp_path))
+    meta = json.loads((tmp_path / "meta.json").read_text())
+    assert meta["phase"] == "done" and len(meta["elements"]) == r["elements"] > 0
+    assert (tmp_path / "materials.json").exists()
+    d = (tmp_path / "model.glb").read_bytes()
+    j = json.loads(d[20:20 + struct.unpack_from("<I", d, 12)[0]])
+    assert len(j["meshes"]) == len(meta["batches"])
+    n_el = len(meta["elements"])
+    for b, mesh_ in zip(meta["batches"], j["meshes"]):
+        pr = mesh_["primitives"][0]
+        per = 3 if b["kind"] == "tri" else 2
+        assert j["accessors"][pr["indices"]]["count"] == b["tris"] * per
+        assert j["accessors"][pr["attributes"]["_EIDX"]]["count"] == j["accessors"][pr["attributes"]["POSITION"]]["count"]
+        R = b["ranges"]; assert len(R) % 3 == 0 and sum(R[k + 2] for k in range(0, len(R), 3)) == b["tris"]
+        assert all(0 <= R[k] < n_el for k in range(0, len(R), 3))
+    # triangle total equals the flat export
+    assert r["triangles"] == sum(len(v) for v in flatten(m).values()) // 9
