@@ -14,3 +14,8 @@ export, text/dimensions/sections, scenes/cameras, writing. See docs/FORMAT.md.
 
 The viewer loads three.js from `../rvt-ballet/web/vendor` or `$SKP_BALLET_VENDOR`.
 Tests: `python3 -m pytest tests`. Licenses: LICENSES.md.
+
+## Windows / macOS
+
+The `skp-ballet` shell launcher is POSIX only. Everywhere (including Windows and macOS) use
+`python -m skpballet FILE.skp`, or `pip install .` which installs a `skp-ballet` command.

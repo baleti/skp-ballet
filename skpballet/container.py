@@ -32,7 +32,11 @@ class SkpFile:
 
 def open_skp(src):
     """src: path or bytes. Raises ValueError for non-SKP or pre-2021 (MFC archive) files."""
-    data = src if isinstance(src, (bytes, bytearray)) else open(src, "rb").read()
+    if isinstance(src, (bytes, bytearray)):
+        data = src
+    else:
+        with open(src, "rb") as fh:
+            data = fh.read()
     if data[:4] != MAGIC:
         raise SkpError("not a SketchUp file (bad magic)")
     z = data.find(b"PK\x03\x04", 4, 4096)

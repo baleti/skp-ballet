@@ -60,6 +60,21 @@ def _find_web():
     return None
 
 
+def safe_join(root, urlpath):
+    """Map a URL path under root; anything resolving outside root (.., backslashes, absolute) -> a path that does not exist."""
+    from urllib.parse import unquote
+    rel = unquote(urlpath)
+    real_root = os.path.realpath(root)
+    if os.path.splitdrive(rel)[0] or "\\" in rel or "\0" in rel:
+        return os.path.join(real_root, "__invalid__")
+    cand = os.path.realpath(os.path.join(real_root, rel.lstrip("/")))
+    try:
+        inside = os.path.commonpath([real_root, cand]) == real_root
+    except ValueError:
+        inside = False
+    return cand if inside else os.path.join(real_root, "__invalid__")
+
+
 def serve(glb, port=0, open_browser=True):
     vendor = _find_web()
     if not vendor:
@@ -73,7 +88,7 @@ def serve(glb, port=0, open_browser=True):
             if p == "/model.glb":
                 return glb
             if p.startswith("/vendor/"):
-                return os.path.join(vendor, os.path.normpath(p[len("/vendor/"):]).lstrip("./"))
+                return safe_join(vendor, p[len("/vendor/"):])
             return os.path.join(here, "index.html")
 
         def log_message(self, *a):

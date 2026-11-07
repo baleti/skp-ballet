@@ -133,3 +133,16 @@ def test_cli_info_json(capsys):
     j = json.loads(capsys.readouterr().out)
     assert j["counts"]["faces"] > 0 and len(j["bbox_m"]) == 2
     assert all(a <= b for a, b in zip(*j["bbox_m"]))
+
+
+def test_vendor_path_cannot_escape(tmp_path):
+    from skpballet.cli import safe_join
+    root = tmp_path / "v"; (root / "three").mkdir(parents=True)
+    (tmp_path / "secret.txt").write_text("x")
+    ok = safe_join(str(root), "three/a.js")
+    assert ok == os.path.join(os.path.realpath(str(root)), "three", "a.js")
+    for bad in ("../secret.txt", "..%2fsecret.txt", "%2e%2e/secret.txt", "..\\secret.txt",
+                "/etc/passwd", "three/../../secret.txt", "C:\\Windows\\win.ini", "a\0b"):
+        r = safe_join(str(root), bad)
+        assert not os.path.exists(r), bad
+        assert os.path.realpath(r).startswith(os.path.realpath(str(root))), bad
