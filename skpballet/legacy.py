@@ -45,6 +45,8 @@ class _R:
             self.classes[cslot] = name
         elif tag & 0x8000 and tag != 0x7FFF:
             cslot = tag & 0x7FFF
+            if cslot not in self.classes and want:
+                self.classes[cslot] = want   # class declared before our start: learn it from the expected context
             if cslot not in self.classes:
                 raise LegacyError("class-ref to undeclared slot %d at %d" % (cslot, self.p))
             name = self.classes[cslot]
@@ -59,9 +61,37 @@ class _R:
         self.objs[oslot] = o
         return o
 
+    def utf16(self):
+        if self.d[self.p:self.p + 3] != b"\xff\xfe\xff":
+            raise LegacyError("string marker expected at %d" % self.p)
+        self.p += 3
+        n = self.u8()
+        if n == 0xFF:
+            n = self.u16()
+            if n == 0xFFFF:
+                n = self.u32()
+        t = self.d[self.p:self.p + 2 * n].decode("utf-16-le"); self.p += 2 * n
+        return t
+
+    def value(self, t):
+        if t == 0x00:
+            return None
+        if t in (0x04, 0x09):
+            return self.u32()
+        if t in (0x06, 0x0C):
+            return self.f64s(1)[0]
+        if t == 0x07:
+            return self.u8()
+        if t == 0x0A:
+            return self.utf16()
+        if t == 0x0B:
+            return [self.value(self.u8()) for _ in range(self.u32())]
+        if t in (0x11, 0x12):
+            return self.f64s(3)
+        raise LegacyError("attribute value type %#x at %d" % (t, self.p))
+
     def pre(self):
-        if self.u16() != 0:
-            raise LegacyError("attribute container not supported at %d" % self.p)
+        a = self.obj("CAttributeContainer")      # attribute container or None
         mask = self.u8()
         for b in range(8):
             if mask >> b & 1:
@@ -72,6 +102,24 @@ class _R:
         self.u16()   # layer id (inline layer objects unsupported)
 
     def body(self, name):
+        if name == "CAttributeContainer":
+            self.pre(); out = []
+            while True:
+                n = self.obj()
+                if n is None:
+                    break
+                out.append(n)
+            return ("attrs", out)
+        if name == "CAttributeNamed":
+            self.pre(); self.p += 4
+            dn = self.utf16(); kv = {}
+            while True:
+                k = self.utf16()
+                if k == "":
+                    break
+                kv[k] = self.value(self.u8())
+            self.u32()   # trailer (ver >= 7)
+            return ("attr", dn, kv)
         if name == "CVertex":
             self.pre(); self.nverts += 1
             return ("v",) + self.f64s(3)
