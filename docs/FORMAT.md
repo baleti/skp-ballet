@@ -65,3 +65,10 @@ legacy sample available on this host). No code copied.
   OpenSKP parses only part of its old test files (8/14, 11/15 in two docs), so expect variance.
 - Plan: first implement the tag/back-ref reader over a public legacy sample (none yet), verify counts against the
   2021 re-save of the same model, only then widen versions.
+
+## Observation: tag (layer) records in annotation_layers_vff.skp (2021+, v26.1)
+
+Layer node 0x3C8C has 0x5DC (id), 0x3C8D (name, EMPTY for all 4 layers here), 0x3C8E (1 byte, 0 here), 0x3C8F
+(an embedded record: 0x32C8 containing id and 0x32CC string such as `Layer_Layer0`, UTF-8, non-ASCII names occur;
+probably the layer colour material) and 0x3C90 (u32 0). So `layer_names` is empty for this file; the meaning of
+0x3C8E (visibility?) is unverified (single data point).

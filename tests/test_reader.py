@@ -214,3 +214,8 @@ def test_rvt_ballet_cache_consistent(f, tmp_path):
         assert all(0 <= R[k] < n_el for k in range(0, len(R), 3))
     # triangle total equals the flat export
     assert r["triangles"] == sum(len(v) for v in flatten(m).values()) // 9
+
+
+def test_layer_records_counted_annotation_fixture():
+    m = load(open_skp(os.path.join(D, "annotation_layers_vff.skp")))
+    assert len(m.layers) == 4
