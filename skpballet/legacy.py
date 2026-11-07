@@ -105,7 +105,7 @@ class _R:
         if name == "CAttributeContainer":
             self.pre(); out = []
             while True:
-                n = self.obj()
+                n = self.obj("CAttributeNamed")
                 if n is None:
                     break
                 out.append(n)

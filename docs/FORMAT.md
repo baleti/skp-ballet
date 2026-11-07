@@ -87,3 +87,14 @@ probably the layer colour material) and 0x3C90 (u32 0). So `layer_names` is empt
   u32 nloops, loops, u16 back material. CLayer: early preamble, utf16 name, hidden flag in the first byte after it.
 - CComponentDefinition is heuristic in OpenSKP (re-anchoring +-4 bytes, scanning for the thumbnail), so a clean-room
   reader should expect to derive its own tail layout from samples.
+
+### Legacy observations from sample tracing (2017/2020 public fixtures)
+
+- Entity list objects are top-level; faces/edges may appear in any order, edges reference vertices and each other by
+  back-ref (u16 slot). A back-ref slot is absolute in the archive; the scanner finds the slot base by search.
+- The attribute container (class declared early, class-ref 0x8003 in these files) holds CAttributeNamed objects
+  (raw 4, UTF-16 dictionary name, key/typed value pairs, empty key ends) and, in textured faces (image.skp,
+  uv_positioning.skp), a CFaceTextureCoords object whose body is f64-based (contains 48.0/36.0 and unit vectors) but
+  whose length is not yet decoded: it is not a multiple-of-8 layout after the 3-byte preamble.
+- Edge body after the two vertex refs ends with a null curve ref; the entity list then continues directly with the
+  next object (here the face, whose first field is the attribute container ref).
