@@ -149,8 +149,9 @@ def definition_tris(d):
     return out
 
 
-def flatten(model, max_depth=24, max_tris=5_000_000):
-    """Returns {mat_id: flat list of floats (x,y,z per vertex, metres, Y-up)}."""
+def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
+    """Returns {mat_id: flat list of floats (x,y,z per vertex, metres, Y-up)}.
+    If `lines` is a list, edge segments (6 floats each, same space) are appended to it."""
     cache, res, count = {}, {}, [0]
 
     def emit(tris_by_mat, m):
@@ -169,6 +170,12 @@ def flatten(model, max_depth=24, max_tris=5_000_000):
         if d.id not in cache:
             cache[d.id] = definition_tris(d)
         emit(cache[d.id], m)
+        if lines is not None:
+            for a, b in d.edges.values():
+                if a in d.vertices and b in d.vertices:
+                    for p in (d.vertices[a], d.vertices[b]):
+                        x, y, z = _mul(m, p)
+                        lines.extend((x * INCH, z * INCH, -y * INCH))
         for inst in d.instances:
             sub = model.defs.get(inst["def_id"])
             if sub is not None:
@@ -178,8 +185,9 @@ def flatten(model, max_depth=24, max_tris=5_000_000):
     return res
 
 
-def write_glb(model, path):
-    res = flatten(model)
+def write_glb(model, path, edges=True):
+    seg = [] if edges else None
+    res = flatten(model, lines=seg)
     bin_, views, accs, prims, mats = bytearray(), [], [], [], []
     for mid, buf in sorted(res.items(), key=lambda kv: str(kv[0])):
         if not buf:
@@ -197,6 +205,17 @@ def write_glb(model, path):
                                                    metallicFactor=0, roughnessFactor=0.9),
                          **({"alphaMode": "BLEND"} if mt["alpha"] < 1 else {})))
         prims.append(dict(attributes=dict(POSITION=len(accs) - 1), material=len(mats) - 1, mode=4))
+    if seg:
+        n = len(seg) // 3
+        off = len(bin_)
+        bin_ += struct.pack("<%df" % len(seg), *seg)
+        views.append(dict(buffer=0, byteOffset=off, byteLength=len(seg) * 4, target=34962))
+        accs.append(dict(bufferView=len(views) - 1, componentType=5126, count=n, type="VEC3",
+                         min=[min(seg[0::3]), min(seg[1::3]), min(seg[2::3])],
+                         max=[max(seg[0::3]), max(seg[1::3]), max(seg[2::3])]))
+        mats.append(dict(name="edges", pbrMetallicRoughness=dict(baseColorFactor=[0.05, 0.05, 0.05, 1],
+                                                                 metallicFactor=0, roughnessFactor=1)))
+        prims.append(dict(attributes=dict(POSITION=len(accs) - 1), material=len(mats) - 1, mode=1))
     js = dict(asset=dict(version="2.0", generator="skp-ballet"), scene=0, scenes=[dict(nodes=[0])],
               nodes=[dict(mesh=0, name="model")], meshes=[dict(primitives=prims)] if prims else [dict(primitives=[])],
               materials=mats, accessors=accs, bufferViews=views, buffers=[dict(byteLength=len(bin_))])

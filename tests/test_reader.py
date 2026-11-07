@@ -78,7 +78,21 @@ def test_glb_valid(f, tmp_path):
     assert magic == b"glTF" and ver == 2 and ln == len(d) and n > 0
     jl = struct.unpack_from("<I", d, 12)[0]
     j = json.loads(d[20:20 + jl])
-    assert sum(a["count"] for a in j["accessors"]) == n * 3
+    tri = [pr for pr in j["meshes"][0]["primitives"] if pr.get("mode", 4) == 4]
+    assert sum(j["accessors"][pr["attributes"]["POSITION"]]["count"] for pr in tri) == n * 3
+    lines = [pr for pr in j["meshes"][0]["primitives"] if pr.get("mode") == 1]
+    assert len(lines) == 1 and j["accessors"][lines[0]["attributes"]["POSITION"]]["count"] % 2 == 0
+
+
+@pytest.mark.parametrize("f", FILES)
+def test_edge_segments_match_instanced_edge_count(f):
+    m = load(open_skp(f)); seg = []
+    flatten(m, lines=seg)
+
+    def count(d, depth=0):
+        c = sum(1 for a, b in d.edges.values() if a in d.vertices and b in d.vertices)
+        return c + sum(count(m.defs[i["def_id"]], depth + 1) for i in d.instances if i["def_id"] in m.defs)
+    assert len(seg) == count(m.root) * 6 and len(seg) > 0
 
 
 def test_viewer_server_smoke(tmp_path):
