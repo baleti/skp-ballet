@@ -19,3 +19,13 @@ Tests: `python3 -m pytest tests`. Licenses: LICENSES.md.
 
 The `skp-ballet` shell launcher is POSIX only. Everywhere (including Windows and macOS) use
 `python -m skpballet FILE.skp`, or `pip install .` which installs a `skp-ballet` command.
+
+## Headless render check
+
+No GPU needed. With the viewer running (`skp-ballet FILE --no-browser --port 18777`):
+
+    chromium --headless=new --no-sandbox --use-angle=swiftshader --enable-unsafe-swiftshader \
+      --ignore-gpu-blocklist --enable-webgl --virtual-time-budget=10000 \
+      --window-size=900,700 --screenshot=out.png http://127.0.0.1:18777/
+
+Without the swiftshader flags the page stays on "loading..." because no WebGL context can be created.
