@@ -129,9 +129,26 @@ def triangulate(loops3d, normal, _split=True):
     # bridge holes (rightmost hole vertex first) into the outer ring
     for hole in sorted(rings[1:], key=lambda h: -max(P2[i][0] for i in h)):
         hi = max(hole, key=lambda i: P2[i][0])
+        touch = None   # a hole vertex that coincides with a ring vertex (hole touching the boundary): splice there
+        pos2 = {}
+        for kk, oi in enumerate(outer):
+            pos2.setdefault(P2[oi], []).append(kk)
+        for hv in hole:
+            for kk in pos2.get(P2[hv], ()):
+                hn = hole[(hole.index(hv) + 1) % len(hole)]
+                if _locally_inside(P2, outer, kk, P2[hn]):
+                    touch = (hv, kk)
+                    break
+            if touch:
+                break
+        if touch:
+            hi = touch[0]
         cand = sorted(range(len(outer)), key=lambda k: (P2[outer[k]][0] - P2[hi][0]) ** 2 + (P2[outer[k]][1] - P2[hi][1]) ** 2)
         others = [h for h in rings[1:] if h is not hole]
         best = cand[0]
+        if touch:
+            cand = [touch[1]]
+            best = touch[1]
         for k in cand[:60]:   # nearest outer vertex whose bridge does not cross the ring or another hole
             if _locally_inside(P2, outer, k, P2[hi]) and _bridge_clear(P2, hi, outer[k], outer, hole, others):
                 best = k

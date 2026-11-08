@@ -327,3 +327,11 @@ def test_triangulate_three_holes_shared_bridge_vertex():
         return abs(sum(h[i][0] * h[(i + 1) % 4][1] - h[(i + 1) % 4][0] * h[i][1] for i in range(4))) / 2
     P, tr = triangulate([outer] + holes, (0, 0, 1))
     assert abs(_tri_area(P, tr) - (240 - sum(sh(h) for h in holes))) < 1e-6   # was 0.69 of it: a bridge left a vertex through the wrong wedge
+
+
+def test_triangulate_touching_hole_uses_shared_vertex():
+    from skpballet.mesh import triangulate
+    # hole touches the outer ring at (5,10) but its right-most vertex (9,9) is nearer to the corner (10,10)
+    loop = [(0, 0, 0), (10, 0, 0), (10, 10, 0), (5, 10, 0), (9, 9, 0), (8, 5, 0), (5, 10, 0), (0, 10, 0)]
+    P, tr = triangulate([loop], (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 91.5) < 1e-9
