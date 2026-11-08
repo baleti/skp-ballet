@@ -203,7 +203,13 @@ def _lin(c):
 
 def write_glb(model, path, edges=True):
     seg = [] if edges else None
-    res = flatten(model, lines=seg)
+    import gc
+    was = gc.isenabled(); gc.disable()
+    try:
+        res = flatten(model, lines=seg)
+    finally:
+        if was:
+            gc.enable()
     bin_, views, accs, prims, mats = bytearray(), [], [], [], []
     for mid, buf in sorted(res.items(), key=lambda kv: str(kv[0])):
         if not buf:
