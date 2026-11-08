@@ -123,8 +123,8 @@ def write_cache(model, outdir, name="model.skp"):
     meta = dict(file=name, levels=[], grids=[], rooms=[], views=[], sheets=[], fidLabels={"mesh": "triangle mesh from the SketchUp file"}, phases=[],
                 defaultHidden=[], stamps={"reader": "skp-ballet", "viewer": "skp-ballet"}, phase="done", batches=bmeta, bbox=bb,
                 coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp")
-    with open(os.path.join(outdir, "meta.json"), "w") as f:
+    with open(os.path.join(outdir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, separators=(",", ":"))
-    with open(os.path.join(outdir, "materials.json"), "w") as f:
+    with open(os.path.join(outdir, "materials.json"), "w", encoding="utf-8") as f:
         json.dump(dict(materials=mats, textureClasses={}), f, separators=(",", ":"))
     return dict(elements=len(elements), batches=len(bmeta), triangles=sum(b["tris"] for b in bmeta if b["kind"] == "tri"))
