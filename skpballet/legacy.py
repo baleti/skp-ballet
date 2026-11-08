@@ -250,10 +250,24 @@ def scan_materials(data, info=None):
             r.p += 2   # attribute ref (None)
             if r.u8() & 1:
                 r.u8()
-            name = r.utf16(); r.u16()
-            rr, gg, bb, aa = (r.u8() for _ in range(4))
+            name = r.utf16()
+            tex = None
+            if r.u16() == 1:   # textured: u32 1, embedded CDib (decl or class-ref), u32 kind, u32 n + PNG bytes, 2 f64 scale, path
+                r.u16()
+                t = r.u16()
+                if t == 0xFFFF:
+                    r.u16(); ln = r.u16(); r.p += ln   # class declaration: schema, name length, name
+                r.u32(); n = r.u32()
+                if n > len(data) - r.p:
+                    raise LegacyError("texture size")
+                tex = dict(png=bytes(data[r.p:r.p + n]), scale=None); r.p += n
+                tex["scale"] = r.f64s(2); tex["path"] = r.utf16()
+                rr, gg, bb, aa = (r.u8() for _ in range(4)); r.p += 5
+                aa = 255
+            else:
+                rr, gg, bb, aa = (r.u8() for _ in range(4))
             r.utf16(); r.p += 17
-            out.append((name, (rr, gg, bb), aa / 255.0))
+            out.append((name, (rr, gg, bb), aa / 255.0) + ((tex,) if tex else ()))
             if len(out) > 5000 or r.p + 2 > len(data) or not (struct.unpack_from("<H", data, r.p)[0] & 0x8000) or struct.unpack_from("<H", data, r.p)[0] == 0xFFFF:
                 break
             if info is not None and len(out) == 1:
@@ -289,8 +303,9 @@ def load_legacy(skp):
     d = Definition(-1, "root"); m.root = d
     mi = {"base_slot": 10}
     mats = scan_materials(skp.data, mi)
-    for i, (nm, rgb, al) in enumerate(mats):
-        m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al)
+    for i, mt in enumerate(mats):
+        nm, rgb, al = mt[:3]
+        m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al, **({"texture": mt[3]} if len(mt) > 3 else {}))
     # face front material = archive slot of the material object (observed: faces 10, 11 -> Red, Blue); unknown slots stay unassigned
     slots = inf.get("face_matslots") or []
     vid = {}

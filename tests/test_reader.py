@@ -443,3 +443,14 @@ def test_legacy_face_materials():
     mesh.write_glb(m, out)
     d = open(out, "rb").read()
     assert b'"baseColorFactor":[1' in d.replace(b" ", b"") or b"baseColorFactor" in d
+
+
+def test_legacy_textured_materials_embed_png():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "legacy_v2020_textured.skp")))
+    t = [v for v in m.materials.values() if "texture" in v]
+    assert len(t) == 1 and t[0]["name"] == "Checker" and t[0]["texture"]["scale"] == (10.0, 10.0)
+    png = t[0]["texture"]["png"]
+    assert png[:8] == b"\x89PNG\r\n\x1a\n" and png.endswith(b"IEND\xaeB`\x82") and len(png) == 88
+    m2 = scene.load(container.open_skp(os.path.join(D, "legacy", "textures.skp")))
+    assert sorted(v["name"] for v in m2.materials.values()) == ["Brick", "Tile"]
