@@ -98,3 +98,11 @@ probably the layer colour material) and 0x3C90 (u32 0). So `layer_names` is empt
   whose length is not yet decoded: it is not a multiple-of-8 layout after the 3-byte preamble.
 - Edge body after the two vertex refs ends with a null curve ref; the entity list then continues directly with the
   next object (here the face, whose first field is the attribute container ref).
+
+## Known defect: ear clipping with several holes (open)
+
+Synthetic repro (outer 40x6 rectangle, two rectangular holes x 10.64-12.9 and 15.33-17.27, y 1.1-4.0): the merged
+bridged polygon has the right area (228.49) but the ear clipper drops vertices ("no ear found" fallback) and returns
+56.4. Random rectangle holes: about 58 percent of 2-8 hole cases give a wrong area. Real files: 2 of 11520 faces
+differ by more than 0.1 percent after the spike/pinch/bridge fixes (10 before). Next step: earcut-style cure for
+coincident bridge vertices (or a different decomposition).
