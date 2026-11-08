@@ -271,3 +271,27 @@ def test_legacy_fuzz_fails_cleanly():
                 load(open_skp(bytes(b)))
             except SkpError:
                 pass
+
+
+def _tri_area(P, tr):
+    import math
+    s = 0.0
+    for a, b, c in tr:
+        u = [P[b][i] - P[a][i] for i in range(3)]; v = [P[c][i] - P[a][i] for i in range(3)]
+        s += math.sqrt((u[1]*v[2]-u[2]*v[1])**2 + (u[2]*v[0]-u[0]*v[2])**2 + (u[0]*v[1]-u[1]*v[0])**2) / 2
+    return s
+
+
+def test_triangulate_zero_width_spike_area():
+    from skpballet.mesh import triangulate
+    # square with a zero-width spike (2,4)->(2,2)->(2,4): area must stay 16 (was 20 before spikes were removed)
+    loop = [(0, 0, 0), (4, 0, 0), (4, 4, 0), (2, 4, 0), (2, 2, 0), (2, 4, 0), (0, 4, 0)]
+    P, tr = triangulate([loop], (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 16.0) < 1e-9
+
+
+def test_triangulate_pinched_loop_area():
+    from skpballet.mesh import triangulate
+    loop = [(0, 0, 0), (2, 0, 0), (1, 1, 0), (2, 2, 0), (0, 2, 0), (1, 1, 0)]   # two triangles touching at (1,1)
+    P, tr = triangulate([loop], (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 2.0) < 1e-9

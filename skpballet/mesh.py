@@ -20,8 +20,56 @@ def _signed(pts):
     return sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
 
 
+def _seg_cross(a, b, c, d):
+    """proper intersection of segments ab and cd (shared endpoints and touching do not count)"""
+    def o(p, q, r):
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    o1, o2, o3, o4 = o(a, b, c), o(a, b, d), o(c, d, a), o(c, d, b)
+    return ((o1 > 1e-12 and o2 < -1e-12) or (o1 < -1e-12 and o2 > 1e-12)) and \
+           ((o3 > 1e-12 and o4 < -1e-12) or (o3 < -1e-12 and o4 > 1e-12))
+
+
+def _bridge_clear(P2, hi, oi, outer, hole, others):
+    a, b = P2[hi], P2[oi]
+    for ring in [outer, hole] + others:
+        n = len(ring)
+        for k in range(n):
+            c, d = P2[ring[k]], P2[ring[(k + 1) % n]]
+            if _seg_cross(a, b, c, d):
+                return False
+    return True
+
+
+def _split_pinched(loop):
+    """Split a loop that visits the same 3D point twice into simple loops (pieces between the repeats)."""
+    out, stack, seen = [], [], {}
+    for p in loop:
+        key = (round(p[0], 6), round(p[1], 6), round(p[2], 6))
+        if key in seen:
+            i = seen[key]
+            piece = stack[i:]
+            for q in piece[1:]:
+                seen.pop((round(q[0], 6), round(q[1], 6), round(q[2], 6)), None)
+            del stack[i + 1:]
+            if len(piece) >= 3:
+                out.append(piece)
+        else:
+            seen[key] = len(stack); stack.append(p)
+    if len(stack) >= 3:
+        out.append(stack)
+    return out or [loop]
+
+
 def triangulate(loops3d, normal):
     """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples)."""
+    if len(loops3d) == 1:
+        parts = _split_pinched(loops3d[0])
+        if len(parts) > 1 or len(parts[0]) != len(loops3d[0]):   # loop touches itself or has a zero-width spike at a repeated vertex: triangulate each simple piece
+            P3, tris = [], []
+            for part in parts:
+                sp, st = triangulate([part], normal)
+                off = len(P3); P3.extend(sp); tris.extend((a + off, b + off, c + off) for a, b, c in st)
+            return P3, tris
     nx, ny, nz = normal
     n = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
     nx, ny, nz = nx / n, ny / n, nz / n
@@ -50,11 +98,13 @@ def triangulate(loops3d, normal):
     # bridge holes (rightmost hole vertex first) into the outer ring
     for hole in sorted(rings[1:], key=lambda h: -max(P2[i][0] for i in h)):
         hi = max(hole, key=lambda i: P2[i][0])
-        best, bd = None, 1e300
-        for k, oi in enumerate(outer):
-            d = (P2[oi][0] - P2[hi][0]) ** 2 + (P2[oi][1] - P2[hi][1]) ** 2
-            if d < bd:
-                bd, best = d, k
+        cand = sorted(range(len(outer)), key=lambda k: (P2[outer[k]][0] - P2[hi][0]) ** 2 + (P2[outer[k]][1] - P2[hi][1]) ** 2)
+        others = [h for h in rings[1:] if h is not hole]
+        best = cand[0]
+        for k in cand[:60]:   # nearest outer vertex whose bridge does not cross the ring or another hole
+            if _bridge_clear(P2, hi, outer[k], outer, hole, others):
+                best = k
+                break
         hp = hole.index(hi)
         hr = hole[hp:] + hole[:hp]
         d1, d2 = len(P3), len(P3) + 1  # duplicated bridge endpoints get their own node ids
