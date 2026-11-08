@@ -106,7 +106,7 @@ class _R:
         always 0). The following u16 is a layer reference (inline layer objects unsupported)."""
         m = struct.unpack_from("<H", self.d, self.p)[0]
         self.p += 8
-        self.u16()
+        self.last_layer = self.u16()
         return m
 
     def body(self, name):
@@ -153,7 +153,7 @@ class _R:
                 us.append(u)
             return ("l", us)
         if name == "CFace":
-            self.pre(); matslot = self.drawbase()
+            self.pre(); matslot = self.drawbase(); layer = self.last_layer
             plane = self.f64s(4)
             n = self.u32()
             if n > 10000:
@@ -161,7 +161,7 @@ class _R:
             loops = [self.obj() for _ in range(n)]
             self.u16()
             self.nfaces += 1
-            return ("f", plane, loops, matslot)
+            return ("f", plane, loops, matslot, layer)
         if name == "CFaceTextureCoords":
             self.p += 215   # observed fixed length (edge_flags fixture): pre + 6 rows of 4 f64 + 17 unknown bytes
             return ("ftc",)
@@ -216,9 +216,9 @@ def scan_faces(data, info=None, version=""):
                     complete=count < 1 << 30 and len(best) == count and all(o is not None for o in best[:_last(best)]))
     faces = [f for f in best if f is not None and f[0] == "f"]
     out = []
-    fm = []
-    for _, plane, loops, matslot in faces:
-        fm.append(matslot)
+    fm = []; fl = []
+    for _, plane, loops, matslot, layer in faces:
+        fm.append(matslot); fl.append(layer)
         ls = []
         for lp in loops:
             pts = []
@@ -229,7 +229,7 @@ def scan_faces(data, info=None, version=""):
             ls.append(pts)
         out.append(ls)
     if info is not None:
-        info["face_matslots"] = fm
+        info["face_matslots"] = fm; info["face_layerrefs"] = fl
     return out
 
 

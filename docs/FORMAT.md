@@ -142,3 +142,11 @@ bytes apart), then 8 bytes. Values seen: `edge_flags` (default mapping): the fir
 2 to 5 have 1.0, all other doubles 0. So each group is probably `value, 0, 0, 0` padded to 32 bytes, or a 4-vector
 whose other components happened to be 0 here; one non-trivial sample cannot tell. No per-face UV is produced; the
 GLB uses flat colour for legacy textured materials.
+
+## Legacy face layer reference (observations, 2026-11-08)
+The u16 after the 8 draw-base bytes of a CFace is 0 on every face of 16 public fixtures that use only Layer0
+(including files that have other layers but no face on them). Non-zero only in materials_and_layers (faces 14, 15;
+layers Layer0, Roof, Walls) and chair_and_table (all 7 faces 16; layers Layer0, Chair, Table). Likely an archive
+slot of the layer object (0 = default layer), same scheme as the material slot, but the slot-to-layer mapping is not
+pinned: attribute dictionaries between layer objects may also use slots. Not applied to the model; exposed as
+`info["face_layerrefs"]` from `legacy.scan_faces`. Needs a fixture with a known face-to-layer assignment.
