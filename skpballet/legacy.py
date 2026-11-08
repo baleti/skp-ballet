@@ -205,7 +205,10 @@ def load_legacy(skp):
         inf = {}
         faces = scan_faces(skp.data, inf)
     except LegacyError as e:
-        raise SkpError("legacy file: %s" % e)
+        if "no geometry class" not in str(e):
+            raise SkpError("legacy file: %s" % e)
+        faces = []   # a model with no geometry at all (e.g. only layers/materials): empty scene, not an error
+        inf = dict(count=0, parsed=0, complete=True)
     m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
     d = Definition(-1, "root"); m.root = d
     vid = {}

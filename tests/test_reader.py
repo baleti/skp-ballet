@@ -351,3 +351,11 @@ def test_insert_touching_makes_pinch():
     out = _insert_touching(loop)
     assert len(out) == len(loop) + 1 and out.count((10, 7, 0)) == 2
     assert sorted(len(p) for p in _split_pinched(out)) == [3, 6] or len(_split_pinched(out)) == 2
+
+
+def test_legacy_file_without_geometry_is_an_empty_model():
+    import os
+    from skpballet import container, scene
+    p = os.path.join(os.path.dirname(__file__), "data", "legacy", "single_material_v17.skp")
+    m = scene.load(container.open_skp(p))
+    assert m.counts()["faces"] == 0
