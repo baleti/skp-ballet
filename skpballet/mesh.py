@@ -59,6 +59,35 @@ def _bridge_clear(P2, hi, oi, outer, hole, others):
     return True
 
 
+def _insert_touching(loop):
+    """A vertex lying on the interior of a non-adjacent edge (T-touch) is inserted into that edge as a repeated
+    vertex, so the loop becomes an ordinary pinched loop."""
+    n = len(loop)
+    if n < 4 or n > 600:
+        return loop
+    out = [[p] for p in loop]   # points to insert after each vertex
+    found = False
+    for i in range(n):
+        p = loop[i]
+        for j in range(n):
+            if j == i or (j + 1) % n == i:
+                continue
+            a, b = loop[j], loop[(j + 1) % n]
+            if p == a or p == b:
+                continue
+            dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+            L2 = dx * dx + dy * dy + dz * dz
+            if L2 == 0:
+                continue
+            t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy + (p[2] - a[2]) * dz) / L2
+            if t <= 1e-9 or t >= 1 - 1e-9:
+                continue
+            qx, qy, qz = a[0] + t * dx - p[0], a[1] + t * dy - p[1], a[2] + t * dz - p[2]
+            if qx * qx + qy * qy + qz * qz <= 1e-14 * max(L2, 1.0):
+                out[j].append(p); found = True
+    return [q for pts in out for q in pts] if found else loop
+
+
 def _split_pinched(loop):
     """Split a loop that visits the same 3D point twice into simple loops (pieces between the repeats)."""
     out, stack, seen = [], [], {}
@@ -82,7 +111,7 @@ def _split_pinched(loop):
 def triangulate(loops3d, normal, _split=True):
     """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples)."""
     if _split and len(loops3d) == 1:
-        parts = _split_pinched(loops3d[0])
+        parts = _split_pinched(_insert_touching(loops3d[0]))
         if len(parts) > 1 or len(parts[0]) != len(loops3d[0]):   # loop touches itself or has a zero-width spike at a repeated vertex: triangulate each simple piece
             def sarea(pt):   # signed area along the face normal
                 x = y = z = 0.0

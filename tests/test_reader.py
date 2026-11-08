@@ -335,3 +335,19 @@ def test_triangulate_touching_hole_uses_shared_vertex():
     loop = [(0, 0, 0), (10, 0, 0), (10, 10, 0), (5, 10, 0), (9, 9, 0), (8, 5, 0), (5, 10, 0), (0, 10, 0)]
     P, tr = triangulate([loop], (0, 0, 1))
     assert abs(_tri_area(P, tr) - 91.5) < 1e-9
+
+
+def test_triangulate_vertex_touching_edge_area():
+    from skpballet.mesh import triangulate
+    # the tip (10,7) of a triangular notch lies on the interior of the right edge (10,0)-(10,10): region area 100 - 15
+    loop = [(0, 0, 0), (10, 0, 0), (10, 10, 0), (0, 10, 0), (0, 7, 0), (10, 7, 0), (0, 4, 0)]
+    P, tr = triangulate([loop], (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 85.0) < 1e-9
+
+
+def test_insert_touching_makes_pinch():
+    from skpballet.mesh import _insert_touching, _split_pinched
+    loop = [(0, 0, 0), (10, 0, 0), (10, 10, 0), (0, 10, 0), (0, 7, 0), (10, 7, 0), (0, 4, 0)]
+    out = _insert_touching(loop)
+    assert len(out) == len(loop) + 1 and out.count((10, 7, 0)) == 2
+    assert sorted(len(p) for p in _split_pinched(out)) == [3, 6] or len(_split_pinched(out)) == 2
