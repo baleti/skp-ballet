@@ -373,3 +373,12 @@ def test_legacy_2013_has_no_mask_byte():
     m = scene.load(container.open_skp(os.path.join(D, "legacy", "nesting_2013.skp")))
     c = m.counts()
     assert c["faces"] == 1 and c["vertices"] == 4 and "INCOMPLETE" not in m.warnings[0]
+
+
+def test_cli_info_bbox_and_layers(capsys):
+    from skpballet import cli
+    p = os.path.join(D, "annotation_layers_vff.skp")
+    assert cli.main(["info", "--layers", p]) == 0
+    assert len(capsys.readouterr().out.strip().splitlines()) == 4
+    assert cli.main(["info", "--bbox", p]) == 0
+    assert len(capsys.readouterr().out.split()) in (6, 1)

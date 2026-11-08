@@ -120,6 +120,8 @@ def main(argv=None):
     ap.add_argument("file")
     if cmd == "info":
         ap.add_argument("--json", action="store_true")
+        ap.add_argument("--layers", action="store_true", help="one line per layer: id, name, [off] if flag 0x3C8E is 1 (unverified)")
+        ap.add_argument("--bbox", action="store_true", help="bounding box in metres, Y-up: minx miny minz maxx maxy maxz")
     if cmd == "convert":
         ap.add_argument("out", nargs="?")
     if cmd == "cache":
@@ -129,6 +131,15 @@ def main(argv=None):
         ap.add_argument("--no-browser", action="store_true")
     ns = ap.parse_args(rest)
     try:
+        if cmd == "info" and (ns.layers or ns.bbox):
+            m = scene.load(container.open_skp(ns.file))
+            if ns.layers:
+                for lid, name in sorted(m.layers.items()):
+                    print(lid, repr(name), "[off]" if lid in m.layers_off else "")
+            if ns.bbox:
+                b = bbox(m)
+                print(" ".join("%.6g" % x for x in (b[0] + b[1])) if b else "empty")
+            return 0
         if cmd == "info" and ns.json:
             info_json(ns.file)
             return 0
