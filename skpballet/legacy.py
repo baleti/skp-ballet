@@ -102,8 +102,12 @@ class _R:
                 self.u8()
 
     def drawbase(self):
+        """-> first u16 of the 8 draw-base bytes: for faces the archive slot of the front material (0 = none; edges
+        always 0). The following u16 is a layer reference (inline layer objects unsupported)."""
+        m = struct.unpack_from("<H", self.d, self.p)[0]
         self.p += 8
-        self.u16()   # layer id (inline layer objects unsupported)
+        self.u16()
+        return m
 
     def body(self, name):
         if name == "CArcCurve":
@@ -149,7 +153,7 @@ class _R:
                 us.append(u)
             return ("l", us)
         if name == "CFace":
-            self.pre(); self.drawbase()
+            self.pre(); matslot = self.drawbase()
             plane = self.f64s(4)
             n = self.u32()
             if n > 10000:
@@ -157,7 +161,7 @@ class _R:
             loops = [self.obj() for _ in range(n)]
             self.u16()
             self.nfaces += 1
-            return ("f", plane, loops)
+            return ("f", plane, loops, matslot)
         if name == "CFaceTextureCoords":
             self.p += 215   # observed fixed length (edge_flags fixture): pre + 6 rows of 4 f64 + 17 unknown bytes
             return ("ftc",)
@@ -212,7 +216,9 @@ def scan_faces(data, info=None, version=""):
                     complete=count < 1 << 30 and len(best) == count and all(o is not None for o in best[:_last(best)]))
     faces = [f for f in best if f is not None and f[0] == "f"]
     out = []
-    for _, plane, loops in faces:
+    fm = []
+    for _, plane, loops, matslot in faces:
+        fm.append(matslot)
         ls = []
         for lp in loops:
             pts = []
@@ -222,10 +228,12 @@ def scan_faces(data, info=None, version=""):
                 pts.append(v[1:])
             ls.append(pts)
         out.append(ls)
+    if info is not None:
+        info["face_matslots"] = fm
     return out
 
 
-def scan_materials(data):
+def scan_materials(data, info=None):
     """Materials of the legacy material list: [(name, (r, g, b), alpha 0..1)]. Layout seen on the public fixtures:
     object preamble (attr ref 00 00, mask 01 + id byte), UTF-16 name, u16 0, RGBA bytes, UTF-16 texture path (empty
     here), 17 bytes (14 zeros, f64-like 1.0 tail, u8), next object is a class-ref to CMaterial. Returns [] when unsure; face to
@@ -235,6 +243,8 @@ def scan_materials(data):
         return []
     r = _R(data, m.end())
     out = []
+    if info is not None:
+        info["base_slot"] = 10   # slot of the first material object (class slot 9 on every public fixture)
     try:
         while True:
             r.p += 2   # attribute ref (None)
@@ -246,6 +256,8 @@ def scan_materials(data):
             out.append((name, (rr, gg, bb), aa / 255.0))
             if len(out) > 5000 or r.p + 2 > len(data) or not (struct.unpack_from("<H", data, r.p)[0] & 0x8000) or struct.unpack_from("<H", data, r.p)[0] == 0xFFFF:
                 break
+            if info is not None and len(out) == 1:
+                info["base_slot"] = (struct.unpack_from("<H", data, r.p)[0] & 0x7FFF) + 1   # class-ref slot + 1
             r.p += 2
     except (LegacyError, IndexError, struct.error, UnicodeDecodeError):
         pass
@@ -275,6 +287,12 @@ def load_legacy(skp):
         inf = dict(count=0, parsed=0, complete=True)
     m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
     d = Definition(-1, "root"); m.root = d
+    mi = {"base_slot": 10}
+    mats = scan_materials(skp.data, mi)
+    for i, (nm, rgb, al) in enumerate(mats):
+        m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al)
+    # face front material = archive slot of the material object (observed: faces 10, 11 -> Red, Blue); unknown slots stay unassigned
+    slots = inf.get("face_matslots") or []
     vid = {}
     for fi, loops in enumerate(faces):
         ls = []
@@ -283,10 +301,9 @@ def load_legacy(skp):
             for p in lp:
                 ids.append(vid.setdefault(p, len(vid)))
             ls.append(ids)
-        d.faces.append(dict(id=fi, loops=ls, mat=None, normal=_newell(faces[fi][0])))
+        mi_ = (slots[fi] - mi["base_slot"] + 1) if fi < len(slots) else 0
+        d.faces.append(dict(id=fi, loops=ls, mat=mi_ if 1 <= mi_ <= len(mats) else None, normal=_newell(faces[fi][0])))
     d.vertices = {i: p for p, i in vid.items()}
-    for i, (nm, rgb, al) in enumerate(scan_materials(skp.data)):
-        m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al)
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
     return m

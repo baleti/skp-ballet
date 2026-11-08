@@ -433,3 +433,13 @@ def test_legacy_material_list():
     m = scene.load(container.open_skp(os.path.join(D, "legacy", "materials_and_layers.skp")))
     got = {v["name"]: (v["rgb"], round(v["alpha"], 2)) for v in m.materials.values()}
     assert got == {"Red": ((255, 0, 0), 1.0), "Blue": ((0, 0, 255), 0.5)}
+
+
+def test_legacy_face_materials():
+    from skpballet import container, scene, mesh
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "materials_and_layers.skp")))
+    assert [m.materials[f["mat"]]["name"] for f in m.root.faces] == ["Red", "Blue"]
+    out = os.path.join(os.path.dirname(__file__), "..", ".pytest_cache", "legacy_mat.glb")
+    mesh.write_glb(m, out)
+    d = open(out, "rb").read()
+    assert b'"baseColorFactor":[1' in d.replace(b" ", b"") or b"baseColorFactor" in d
