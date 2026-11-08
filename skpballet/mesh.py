@@ -219,6 +219,21 @@ def triangulate(loops3d, normal, _split=True):
         return _area2(P2, prv[v], v, nxt[v]) < 0
     refl = {v for v in idx if is_refl(v)}
     holes = len(rings) > 1
+    grid = None   # uniform grid over the reflex vertices (outline without holes, many vertices): same candidate set, fewer tests
+    if not holes and len(refl) > 256:
+        xs_ = [P2[v][0] for v in idx]; ys_ = [P2[v][1] for v in idx]
+        gx0, gy0 = min(xs_), min(ys_)
+        gn = int(len(refl) ** 0.5) or 1
+        gw = max(max(xs_) - gx0, max(ys_) - gy0, 1e-12) / gn
+        grid = {}
+
+        def cell_xy(x, y):
+            return (max(0, min(gn - 1, int((x - gx0) / gw))), max(0, min(gn - 1, int((y - gy0) / gw))))
+
+        def cell(v):
+            return cell_xy(P2[v][0], P2[v][1])
+        for v in refl:
+            grid.setdefault(cell(v), set()).add(v)
     alive = set(idx)   # with bridged holes the ring touches itself: test every remaining vertex, not only reflex ones
     cur, left, fails = idx[0], n, 0
     while left > 3:
@@ -228,7 +243,12 @@ def triangulate(loops3d, normal, _split=True):
             xs = (P2[a][0], P2[cur][0], P2[c][0]); ys = (P2[a][1], P2[cur][1], P2[c][1])
             x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
             pa, pb, pc = P2[a], P2[cur], P2[c]
-            for r in (alive if holes else refl):
+            if grid is not None:
+                c0, c1 = cell_xy(x0, y0), cell_xy(x1, y1)
+                cand = [r for gi in range(c0[0], c1[0] + 1) for gj in range(c0[1], c1[1] + 1) for r in grid.get((gi, gj), ()) if r in refl]
+            else:
+                cand = alive if holes else refl
+            for r in cand:
                 if r == a or r == cur or r == c:
                     continue
                 q = P2[r]
@@ -251,6 +271,8 @@ def triangulate(loops3d, normal, _split=True):
             for v in (a, c):
                 if is_refl(v):
                     refl.add(v)
+                    if grid is not None:
+                        grid.setdefault(cell(v), set()).add(v)
                 else:
                     refl.discard(v)
             refl.discard(cur); alive.discard(cur)
