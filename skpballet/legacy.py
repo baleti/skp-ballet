@@ -287,18 +287,15 @@ def scan_layers(data):
     if not m:
         return []
     out = []
-    for mm in re.finditer(rb"\xff\xfe\xff(.)((?:[^\x00]\x00)+)(.)\x00\x00\x01", data[m.end():], re.S):
+    for mm in re.finditer(rb"\xff\xfe\xff(.)((?:[^\x00]\x00)+)(.)\x00\x00(?:\x01.|\x00)?(?=\xff\xfe\xff)", data[m.end():], re.S):
         try:
             nm = mm.group(2).decode("utf-16le")
         except UnicodeDecodeError:
             continue
         if len(nm) != mm.group(1)[0] or nm.startswith("Layer_"):
             continue
-        end = m.end() + mm.end()
-        nxt = data[end + 1:end + 8]
-        if b"\xff\xfe\xff" not in nxt[:3]:
-            continue
-        out.append((nm, mm.group(3)[0]))
+        if all(nm != o[0] for o in out):
+            out.append((nm, mm.group(3)[0]))
     return out
 
 

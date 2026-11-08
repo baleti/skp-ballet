@@ -150,3 +150,8 @@ layers Layer0, Roof, Walls) and chair_and_table (all 7 faces 16; layers Layer0, 
 slot of the layer object (0 = default layer), same scheme as the material slot, but the slot-to-layer mapping is not
 pinned: attribute dictionaries between layer objects may also use slots. Not applied to the model; exposed as
 `info["face_layerrefs"]` from `legacy.scan_faces`. Needs a fixture with a known face-to-layer assignment.
+Addendum: on a public 5425-object v20 model with two layers (Layer0, one named layer), all 229 faces carry ref 43 and
+none 0, consistent with "non-zero = slot of a non-default layer"; with materials_and_layers the ascending non-zero
+refs (14, 15) follow the list order Roof, Walls. chair_and_table has one distinct ref (16) for two non-default
+layers, so the mapping stays ambiguous and is NOT applied. Layer record tail varies by version (`00 00 01 id` in
+v17, `00 00 00 00` in v20); scan_layers accepts both.
