@@ -14,7 +14,7 @@ Status (read only): SketchUp 2021+ files (zip container with `model.dat`). Lists
 (components/groups), vertices, edges, faces, instances, materials, layers; exports a triangulated
 glTF binary (metres, Y-up, one primitive per material) that the viewer shows with three.js.
 Also (experimental): SketchUp 2013-2020 files (MFC archive) give faces of the first entity list only (all 16 geometry-bearing
-public fixtures decode completely, no groups or instances yet, UVs not decoded; incomplete parses are reported in a warning). Edges are exported as
+public fixtures decode completely, no groups or instances placed yet (layer names, materials with embedded PNG textures and instance records are listed by the reader library; the definition link is not decoded), UVs not decoded; incomplete parses are reported in a warning). Edges are exported as
 line primitives; materials get flat colours; tag visibility flags are not used.
 Not yet: textures/UVs, text/dimensions/sections, scenes/cameras, writing (the tool never writes a .skp). Face
 triangulation handles holes, pinched loops, spikes and T-touching vertices (area check on real files: about 0.002
