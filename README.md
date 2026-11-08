@@ -9,8 +9,12 @@ Read SketchUp `.skp` files (sibling of rvt-ballet). Pure Python, no SDK, MIT.
 Status (read only): SketchUp 2021+ files (zip container with `model.dat`). Lists definitions
 (components/groups), vertices, edges, faces, instances, materials, layers; exports a triangulated
 glTF binary (metres, Y-up, one primitive per material) that the viewer shows with three.js.
-Not yet: SketchUp 2013-2020 files (MFC archive, refused with a clear message), textures, edge/line
-export, text/dimensions/sections, scenes/cameras, writing. See docs/FORMAT.md.
+Also (experimental): SketchUp 2013-2020 files (MFC archive) give faces of the first entity list only (13 of 17
+public geometry fixtures decode completely; incomplete parses are reported in a warning). Edges are exported as
+line primitives; materials get flat colours; tag visibility flags are not used.
+Not yet: textures/UVs, text/dimensions/sections, scenes/cameras, writing (the tool never writes a .skp). Face
+triangulation handles holes, pinched loops, spikes and T-touching vertices (area check on real files: about 0.002
+percent of faces off by more than 0.1 percent). See docs/FORMAT.md.
 
 The viewer loads three.js from `../rvt-ballet/web/vendor` or `$SKP_BALLET_VENDOR`.
 Tests: `python3 -m pytest tests`. Licenses: LICENSES.md.
