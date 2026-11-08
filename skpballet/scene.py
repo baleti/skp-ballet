@@ -105,6 +105,17 @@ def _entities(ent, d, model):
 
 
 def load(skp):
+    # millions of small tree nodes: the cyclic GC dominates the parse time (about 45 percent), so pause it
+    import gc
+    was = gc.isenabled(); gc.disable()
+    try:
+        return _load_any(skp)
+    finally:
+        if was:
+            gc.enable()
+
+
+def _load_any(skp):
     """Decode a model; any structural problem raises SkpError."""
     from .container import SkpError, LegacySkp
     if isinstance(skp, LegacySkp):

@@ -12,11 +12,30 @@ CONTAINERS = {
 MAX_DEPTH = 64
 
 
-class Node:
-    __slots__ = ("tag", "payload", "children")
+_HDR = struct.Struct("<HI").unpack_from
 
-    def __init__(self, tag, payload, children):
-        self.tag, self.payload, self.children = tag, payload, children
+
+class Node:
+    """TLV node. Payload bytes and nested children are materialised lazily (most subtrees are never read)."""
+    __slots__ = ("tag", "_d", "_s", "_e", "_c", "_depth", "_p")
+
+    def __init__(self, tag, payload, children, _d=None, _s=0, _e=0, _depth=0):
+        self.tag = tag
+        self._d, self._s, self._e, self._depth = _d, _s, _e, _depth
+        self._c = children
+        self._p = payload
+
+    @property
+    def payload(self):
+        if self._p is None:
+            self._p = self._d[self._s:self._e]
+        return self._p
+
+    @property
+    def children(self):
+        if self._c is None:
+            self._c = parse_tlv(self._d, self._s, self._e, self._depth + 1)
+        return self._c
 
     def find(self, tag):
         return [c for c in self.children if c.tag == tag]
@@ -42,15 +61,16 @@ def parse_tlv(data, start=0, end=None, depth=0):
     if depth > MAX_DEPTH:
         raise ValueError("TLV nesting too deep")
     out, p = [], start
+    app = out.append
+    cont = CONTAINERS
     while p + 6 <= end:
-        tag, ln = struct.unpack_from("<HI", data, p)
+        tag, ln = _HDR(data, p)
         q = p + 6 + ln
         if q > end:
             break
-        if tag in CONTAINERS and ln:
-            # container payload is not copied (children carry the data); avoids O(depth*size) copying
-            out.append(Node(tag, b"", parse_tlv(data, p + 6, q, depth + 1)))
+        if ln and tag in cont:
+            app(Node(tag, b"", None, data, p + 6, q, depth))
         else:
-            out.append(Node(tag, data[p + 6 : q], []))
+            app(Node(tag, None, [], data, p + 6, q, depth))
         p = q
     return out
