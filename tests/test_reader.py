@@ -410,3 +410,9 @@ def test_convert_and_cache_refuse_to_overwrite_the_input(tmp_path):
     assert cli.main(["convert", str(src), str(tmp_path / "b.SKP")]) != 0
     assert cli.main(["cache", str(src), str(src)]) != 0
     assert src.read_bytes() == before and not (tmp_path / "b.SKP").exists()
+
+
+def test_open_without_geometry_does_not_start_viewer(capsys, monkeypatch):
+    from skpballet import cli
+    monkeypatch.setattr(cli, "serve", lambda *a, **k: (_ for _ in ()).throw(AssertionError("viewer started")))
+    assert cli.main([os.path.join(D, "legacy", "single_material_v17.skp")]) == 1

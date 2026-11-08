@@ -159,7 +159,11 @@ def main(argv=None):
             print("triangles:", mesh.write_glb(m, out), "->", out)
             return 0
         glb = os.path.join(tempfile.mkdtemp(prefix="skpballet-"), "model.glb")
-        print("triangles:", mesh.write_glb(m, glb))
+        ntri = mesh.write_glb(m, glb)
+        print("triangles:", ntri)
+        if ntri == 0:   # the rvt-ballet front-end waits forever on a model without geometry
+            print("skp-ballet: the file has no triangles to show; not opening the viewer", file=sys.stderr)
+            return 1
         return serve(glb, ns.port, not ns.no_browser)
     except (ValueError, OSError) as e:
         print("skp-ballet: %s" % e, file=sys.stderr)
