@@ -225,6 +225,33 @@ def scan_faces(data, info=None, version=""):
     return out
 
 
+def scan_materials(data):
+    """Materials of the legacy material list: [(name, (r, g, b), alpha 0..1)]. Layout seen on the public fixtures:
+    object preamble (attr ref 00 00, mask 01 + id byte), UTF-16 name, u16 0, RGBA bytes, UTF-16 texture path (empty
+    here), 17 bytes (14 zeros, f64-like 1.0 tail, u8), next object is a class-ref to CMaterial. Returns [] when unsure; face to
+    material assignment is NOT decoded."""
+    m = re.search(rb"\xff\xff(.)\x00\x09\x00CMaterial", data)
+    if not m:
+        return []
+    r = _R(data, m.end())
+    out = []
+    try:
+        while True:
+            r.p += 2   # attribute ref (None)
+            if r.u8() & 1:
+                r.u8()
+            name = r.utf16(); r.u16()
+            rr, gg, bb, aa = (r.u8() for _ in range(4))
+            r.utf16(); r.p += 17
+            out.append((name, (rr, gg, bb), aa / 255.0))
+            if len(out) > 5000 or r.p + 2 > len(data) or not (struct.unpack_from("<H", data, r.p)[0] & 0x8000) or struct.unpack_from("<H", data, r.p)[0] == 0xFFFF:
+                break
+            r.p += 2
+    except (LegacyError, IndexError, struct.error, UnicodeDecodeError):
+        pass
+    return out
+
+
 def _newell(pts):
     """Face normal from the outer loop (Newell); None when degenerate so callers keep their default."""
     x = y = z = 0.0
@@ -258,6 +285,8 @@ def load_legacy(skp):
             ls.append(ids)
         d.faces.append(dict(id=fi, loops=ls, mat=None, normal=_newell(faces[fi][0])))
     d.vertices = {i: p for p, i in vid.items()}
+    for i, (nm, rgb, al) in enumerate(scan_materials(skp.data)):
+        m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al)
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
     return m

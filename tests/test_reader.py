@@ -426,3 +426,10 @@ def test_legacy_faces_are_triangulated_in_their_own_plane():
     for n in ("chair_and_table", "uv_positioning"):
         faces, bad = area_check.check(os.path.join(D, "legacy", n + ".skp"))
         assert faces and bad == 0, n
+
+
+def test_legacy_material_list():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "materials_and_layers.skp")))
+    got = {v["name"]: (v["rgb"], round(v["alpha"], 2)) for v in m.materials.values()}
+    assert got == {"Red": ((255, 0, 0), 1.0), "Blue": ((0, 0, 255), 0.5)}
