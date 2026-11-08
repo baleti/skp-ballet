@@ -254,3 +254,20 @@ def test_legacy_entity_list_count_validates_parse():
     i = {}   # textured face coords not decoded: must be reported incomplete, never silently complete
     scan_faces(open(os.path.join(D, "legacy", "image.skp"), "rb").read(), i)
     assert not i["complete"]
+
+
+def test_legacy_fuzz_fails_cleanly():
+    import random
+    from skpballet.container import SkpError
+    rnd = random.Random(1)
+    for n in ("arcs_2017", "components", "textures", "nesting_2013"):
+        d = open(os.path.join(D, "legacy", n + ".skp"), "rb").read()
+        for i in range(25):
+            b = bytearray(d[:rnd.randrange(10, len(d))] if i < 5 else d)
+            if i >= 5:
+                for _ in range(rnd.randrange(1, 6)):
+                    b[rnd.randrange(len(b))] = rnd.randrange(256)
+            try:
+                load(open_skp(bytes(b)))
+            except SkpError:
+                pass
