@@ -185,3 +185,13 @@ NEXT instance's prefix (`01 <id> 0a 00 01 01 01 00 00 00 | u16 | u16 def slot | 
 back to back with only their attribute dictionaries in between, and ids count up (0x25, 0x26, 0x27 ...). Child objects
 `13 80`/`15 80` + `00 00 01 <id>` + 8..24 bytes of doubles (-1.0, 10.0 values) follow some instances (probably
 construction or section items). Scanning (scan_instances) therefore finds every instance without walking the chain.
+
+### Legacy definition slot vs first entity list base slot (6 fixtures)
+Archive slot base of the first entity list (the one load_legacy parses) and the definition slots seen in instance records:
+components base 19, instances ref 15 (all three); groups base 18, refs 15/40/56; nested base 15, refs 12/37/56;
+nesting_2017 base 14, refs 12/57; group_in_definition_flag base 15, refs 12/37/12; chair_and_table base 22, refs include 19
+(four Leg_Chair). So the first list belongs to the LOWEST definition slot, which is 3 or 4 below the list base (definition
+object + its attribute container + class declaration precede its entities); definitions are written leaf first. Not used
+in code: instance records also occur INSIDE other definitions (chair_and_table), so placing them at the root without
+decoding their parent would be wrong. A safe special case (all candidates share one slot below the base, as in
+components.skp) was not implemented to avoid overfitting.
