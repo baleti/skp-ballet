@@ -30,6 +30,7 @@ def info_json(path):
     m = scene.load(container.open_skp(path))
     out = dict(file=os.path.basename(path), version=m.version, counts=m.counts(),
                layer_names=sorted(m.layers.values()),
+               layers_flagged_off=sorted(m.layers[i] for i in m.layers_off),  # unverified: flag 0x3C8E==1
                groups=sum(1 for d in m.defs.values() if d.is_group), components=sum(1 for d in m.defs.values() if not d.is_group), material_names=sorted(x["name"] for x in m.materials.values()),
                bbox_m=bbox(m), warnings=m.warnings)
     print(json.dumps(out, indent=2))

@@ -45,6 +45,7 @@ class Model:
         self.root = None     # Definition (top-level entities)
         self.materials = {}  # id -> dict(name, rgb, alpha)
         self.layers = {}     # id -> name
+        self.layers_off = set()  # ids whose flag 0x3C8E is 1 (UNVERIFIED meaning: probably hidden)
         self.warnings = []
 
     def counts(self):
@@ -161,7 +162,11 @@ def _load(skp):
       for l2 in lst.find(0x3A98):
         for e in l2.find(0x3A99):
           for l in e.find(0x3C8C):
-            model.layers[_id(l.first(0x5DC))] = l.first(0x3C8D).text() if l.first(0x3C8D) else ""
+            lid = _id(l.first(0x5DC))
+            model.layers[lid] = l.first(0x3C8D).text() if l.first(0x3C8D) else ""
+            fl = l.first(0x3C8E)
+            if fl is not None and fl.uint() == 1:
+                model.layers_off.add(lid)
     for dl in top.find(0x1F9):
         for x in dl.find(0x1770):
             for y in x.find(0x1771):
