@@ -11,8 +11,9 @@ class LegacyError(Exception):
 
 
 class _R:
-    def __init__(self, d, pos):
+    def __init__(self, d, pos, nomask=False):
         self.d, self.p = d, pos
+        self.nomask = nomask   # SketchUp 13: the attribute-container ref is not followed by a flag-mask byte
         self.classes = {}   # slot -> name
         self.objs = {}      # slot -> object
         self.slot = 1
@@ -93,6 +94,8 @@ class _R:
 
     def pre(self):
         a = self.obj("CAttributeContainer")      # attribute container or None
+        if self.nomask:
+            return
         mask = self.u8()
         for b in range(8):
             if mask >> b & 1:
@@ -167,7 +170,14 @@ class _R:
         raise LegacyError("unsupported class %s" % name)
 
 
-def scan_faces(data, info=None):
+def _major(version):
+    try:
+        return int(str(version).split(".")[0])
+    except ValueError:
+        return 99
+
+
+def scan_faces(data, info=None, version=""):
     """Parse the first entity list: the declaration of its first class is preceded by u16, u32, u32 count (verified on
     the public 2017/2020 fixtures), and exactly `count` objects follow. Returns faces (list of loops of xyz inches).
     If `info` (a dict) is given it receives count, parsed, complete."""
@@ -180,7 +190,7 @@ def scan_faces(data, info=None):
         count = 1 << 30
     best = None
     for base in range(1, 400):   # absolute slot base is unknown: take the first that parses most objects
-        r = _R(data, m.start()); r.slot = base
+        r = _R(data, m.start(), nomask=_major(version) <= 13); r.slot = base
         objs = []
         while len(objs) < count:
             try:
@@ -213,7 +223,7 @@ def load_legacy(skp):
     from .container import SkpError
     try:
         inf = {}
-        faces = scan_faces(skp.data, inf)
+        faces = scan_faces(skp.data, inf, skp.version)
     except LegacyError as e:
         if "no geometry class" not in str(e):
             raise SkpError("legacy file: %s" % e)

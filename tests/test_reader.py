@@ -366,3 +366,10 @@ def test_legacy_curve_and_texture_coords_decode():
     i = {}
     out = scan_faces(open(os.path.join(D, "legacy", "edge_flags.skp"), "rb").read(), i)
     assert i["parsed"] == i["count"] == 28 and len(out) == 4
+
+
+def test_legacy_2013_has_no_mask_byte():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "nesting_2013.skp")))
+    c = m.counts()
+    assert c["faces"] == 1 and c["vertices"] == 4 and "INCOMPLETE" not in m.warnings[0]
