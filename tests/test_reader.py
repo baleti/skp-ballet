@@ -481,3 +481,12 @@ def test_legacy_sdk_saved_and_blank():
     for f, nf in (("sdk_saved_2019.skp", 1), ("sdk_saved_2020.skp", 1), ("legacy_v2019_synthetic.skp", 1), ("blank_v17.skp", 0)):
         m = scene.load(container.open_skp(os.path.join(d, f)))
         assert sum(len(x.faces) for x in [m.root]) == nf, f
+
+
+def test_legacy_instance_records():
+    import os
+    from skpballet.legacy import scan_instances
+    d = os.path.join(os.path.dirname(__file__), "data", "legacy")
+    r = scan_instances(open(os.path.join(d, "components.skp"), "rb").read())
+    assert [(x[0], tuple(round(c) for c in x[2])) for x in r] == [("Chair", (100, 0, 0)), ("Second Chair", (200, 0, 0)), ("Chair", (0, 300, 0))]
+    assert round(r[1][1][1]) == -1 and round(r[1][1][3]) == 1 and round(r[2][1][0]) == 2

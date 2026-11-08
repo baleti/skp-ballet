@@ -156,12 +156,10 @@ refs (14, 15) follow the list order Roof, Walls. chair_and_table has one distinc
 layers, so the mapping stays ambiguous and is NOT applied. Layer record tail varies by version (`00 00 01 id` in
 v17, `00 00 00 00` in v20); scan_layers accepts both.
 
-## Legacy instances (observations, components.skp, 2026-11-08)
-The first entity list holds only geometry (no CText/CGroup/instance objects before the first unsupported class on any
-fixture except CText in legacy_text_arrows_2017). Component instances appear later as: transform doubles, then
-the UTF-16 instance name (ff fe ff len ...), then a 16-byte id (fixture bytes 10 11 12 .. 1f, with the 7th byte
-0x46 and 9th byte tweaked: looks like a GUID with version nibble), then `36 80 03 80 ...` flags. For the first
-instance (translation 100 in) the 128 bytes before the name decode as [0 0 0 1, 0 0 0 1, 0 0 0 1, 100 0 0 1]:
-translation x at index 12 and 1.0 at the end, the rotation part is not stored as plain identity rows; the second
-instance (translation 200) has the 200.0 double 26 bytes before the name, the third (300) only 13 bytes, so the record
-layout varies with the transform (probably optional rotation/scale blocks). NOT decoded; instances stay 0 in the model.
+## Legacy instances (verified listing, components.skp, 2026-11-08)
+An instance/group record is 13 f64 (3x3 row-major, translation in inches, scale) immediately followed by the UTF-16
+instance name. components.skp: 'Chair' identity at (100,0,0); 'Second Chair' rotated 90 degrees about Z (matrix
+[0 -1 0; 1 0 0; 0 0 1], note the 6e-17 cos residue) at (200,0,0); 'Chair' with 3x3 = 2*I at (0,300,0).
+`legacy.scan_instances` lists these by scanning for the name marker with the 104 bytes before it; the definition link
+is still NOT decoded, so the model keeps 0 instances for legacy files (listing only). An earlier note here that the
+layout varies with the transform was wrong (misaligned search for the translation value).

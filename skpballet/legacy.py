@@ -299,6 +299,37 @@ def scan_layers(data):
     return out
 
 
+def scan_instances(data):
+    """Candidate component instances / groups: [(name, rot3x3 row-major, (tx, ty, tz) inches, scale)]. Record (verified on
+    components.skp: translation 100 identity; 200 with a 90 degree rotation; 300 with 3x3 = 2*I): 13 f64 (3x3,
+    translation, scale) directly followed by the UTF-16 instance name. The definition link is NOT decoded, so these are
+    a listing only. Candidates are filtered by finite, plausible numbers (scale in 1e-6..1e6)."""
+    out = []
+    p = data.find(b"\xff\xfe\xff")
+    while p >= 0:
+        q, p = p, data.find(b"\xff\xfe\xff", p + 1)
+        if q < 104 or q + 4 > len(data):
+            continue
+        n = data[q + 3]
+        raw = data[q + 4:q + 4 + 2 * n]
+        if len(raw) != 2 * n or any(raw[i] == 0 for i in range(0, len(raw), 2)) or any(raw[i] for i in range(1, len(raw), 2)):
+            continue
+        try:
+            v = struct.unpack_from("<13d", data, q - 104)
+            nm = raw.decode("utf-16le")
+        except (struct.error, UnicodeDecodeError):
+            continue
+        if not all(x == x and abs(x) < 1e9 for x in v) or not 1e-6 < abs(v[12]) < 1e6:
+            continue
+        r = v[:9]
+        if all(abs(x) < 1e-9 for x in r) or any(abs(x) > 1e6 for x in r):
+            continue
+        if any(abs(x) > 0 and abs(x) < 1e-100 for x in v):   # denormal-ish garbage
+            continue
+        out.append((nm, r, v[9:12], v[12]))
+    return out
+
+
 def _newell(pts):
     """Face normal from the outer loop (Newell); None when degenerate so callers keep their default."""
     x = y = z = 0.0
