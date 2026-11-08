@@ -106,3 +106,9 @@ Cause: bridged hole polygons contain exactly coincident vertex copies; the ear t
 Fix: the copies of the bridge ends are offset sideways by 1e-7 of the bridge length in the 2D working copy (exact 3D
 positions are kept), so the ring is strictly simple. Synthetic random rectangular holes: 117/200 wrong -> 0/200;
 jittered quads 72/200 -> 8/200 (open, not analysed). Real files: 10 -> 1 face of 11520 off by more than 0.1 percent.
+
+### Layer flag 0x3C8E statistics (real 2021-22 files, 8 files, 266 layer records; aggregate only)
+
+0x3C8E is one byte: 0 in 263 records, 1 in 3. Children seen per layer record: 0x5DC, 0x3C8D, 0x3C8E, 0x3C8F, 0x3C90
+(all 266) and 0x3C91 (130). The rare value 1 fits a "hidden"/"off" flag but has NO ground truth here (no SketchUp
+to compare, public fixtures have only zeros), so the reader does not use it for visibility yet.
