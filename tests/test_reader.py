@@ -463,3 +463,12 @@ def test_legacy_layer_list():
     names = lambda f: [n for n, _ in scan_layers(open(os.path.join(d, f), "rb").read())]
     assert names("layers_extra.skp") == ["Layer0", "Walls", "Roof", "Hidden"]
     assert names("chair_and_table.skp") == ["Layer0", "Chair", "Table"]
+
+
+def test_legacy_colorize_materials():
+    import os
+    from skpballet.legacy import scan_materials
+    p = os.path.join(os.path.dirname(__file__), "data", "legacy", "legacy_textured_colorize_2017.skp")
+    mats = scan_materials(open(p, "rb").read())
+    assert sorted(m[0] for m in mats) == ["plain", "shift", "tint", "tint_half"]
+    assert all(m[3]["png"][:8] == b"\x89PNG\r\n\x1a\n" for m in mats if len(m) > 3)
