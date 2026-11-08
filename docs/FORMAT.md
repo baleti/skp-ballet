@@ -163,3 +163,8 @@ instance name. components.skp: 'Chair' identity at (100,0,0); 'Second Chair' rot
 `legacy.scan_instances` lists these by scanning for the name marker with the 104 bytes before it; the definition link
 is still NOT decoded, so the model keeps 0 instances for legacy files (listing only). An earlier note here that the
 layout varies with the transform was wrong (misaligned search for the translation value).
+The u16 just before the 13 doubles is probably the archive slot of the instance's definition: components.skp has 0x0f for
+all three Chair instances ('Chair', 'Second Chair', 'Chair' share one definition), groups.skp 0x0f/0x28/0x38 for
+Table/Group/Chair, nested.skp 0x0c/0x25/0x38 for LeafInstance/Engine/Car. Resolving a slot to a definition's entity
+list needs a decoder for the whole archive object stream (definition bodies, nested entity lists), but the reader only
+parses the first entity list, so the link is recorded here and not used.
