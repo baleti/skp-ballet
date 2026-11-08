@@ -278,6 +278,30 @@ def scan_materials(data, info=None):
     return out
 
 
+def scan_layers(data):
+    """Layers of a legacy file: [(name, flag)] from the layer list after the class table. Layout seen on the public
+    fixtures: UTF-16 name (ff fe ff len ...), flag byte, 00 00 01 id, then the attribute dictionary 'Layer_<name>'.
+    The flag is 1 for 'Hidden' (layers_extra) and 'Walls' (materials_and_layers): meaning UNVERIFIED (probably hidden).
+    Returns [] when unsure."""
+    m = re.search("End-Of-Version-Map".encode("utf-16le"), data)
+    if not m:
+        return []
+    out = []
+    for mm in re.finditer(rb"\xff\xfe\xff(.)((?:[^\x00]\x00)+)(.)\x00\x00\x01", data[m.end():], re.S):
+        try:
+            nm = mm.group(2).decode("utf-16le")
+        except UnicodeDecodeError:
+            continue
+        if len(nm) != mm.group(1)[0] or nm.startswith("Layer_"):
+            continue
+        end = m.end() + mm.end()
+        nxt = data[end + 1:end + 8]
+        if b"\xff\xfe\xff" not in nxt[:3]:
+            continue
+        out.append((nm, mm.group(3)[0]))
+    return out
+
+
 def _newell(pts):
     """Face normal from the outer loop (Newell); None when degenerate so callers keep their default."""
     x = y = z = 0.0
@@ -306,6 +330,10 @@ def load_legacy(skp):
     for i, mt in enumerate(mats):
         nm, rgb, al = mt[:3]
         m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al, **({"texture": mt[3]} if len(mt) > 3 else {}))
+    for i, (nm, fl) in enumerate(scan_layers(skp.data)):
+        m.layers[i + 1] = nm
+        if fl == 1:
+            m.layers_off.add(i + 1)
     # face front material = archive slot of the material object (observed: faces 10, 11 -> Red, Blue); unknown slots stay unassigned
     slots = inf.get("face_matslots") or []
     vid = {}

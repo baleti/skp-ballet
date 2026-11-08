@@ -454,3 +454,12 @@ def test_legacy_textured_materials_embed_png():
     assert png[:8] == b"\x89PNG\r\n\x1a\n" and png.endswith(b"IEND\xaeB`\x82") and len(png) == 88
     m2 = scene.load(container.open_skp(os.path.join(D, "legacy", "textures.skp")))
     assert sorted(v["name"] for v in m2.materials.values()) == ["Brick", "Tile"]
+
+
+def test_legacy_layer_list():
+    import os
+    from skpballet.legacy import scan_layers
+    d = os.path.join(os.path.dirname(__file__), "data", "legacy")
+    names = lambda f: [n for n, _ in scan_layers(open(os.path.join(d, f), "rb").read())]
+    assert names("layers_extra.skp") == ["Layer0", "Walls", "Roof", "Hidden"]
+    assert names("chair_and_table.skp") == ["Layer0", "Chair", "Table"]
