@@ -490,3 +490,15 @@ def test_legacy_instance_records():
     r = scan_instances(open(os.path.join(d, "components.skp"), "rb").read())
     assert [(x[0], tuple(round(c) for c in x[2])) for x in r] == [("Chair", (100, 0, 0)), ("Second Chair", (200, 0, 0)), ("Chair", (0, 300, 0))]
     assert round(r[1][1][1]) == -1 and round(r[1][1][3]) == 1 and round(r[2][1][0]) == 2
+
+
+def test_glb_asset_extras_lists_layers(tmp_path):
+    import json, os, struct
+    from skpballet import container, scene, mesh
+    p = os.path.join(os.path.dirname(__file__), "data", "legacy", "layers_extra.skp")
+    out = tmp_path / "a.glb"
+    mesh.write_glb(scene.load(container.open_skp(p)), str(out))
+    d = out.read_bytes()
+    j = json.loads(d[20:20 + struct.unpack_from("<I", d, 12)[0]])
+    ex = j["asset"]["extras"]
+    assert ex["layers"] == ["Hidden", "Layer0", "Roof", "Walls"] and ex["layers_flagged_off"] == ["Hidden"]

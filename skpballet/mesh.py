@@ -414,7 +414,7 @@ def write_glb(model, path, edges=True):
         mats.append(dict(name="edges", pbrMetallicRoughness=dict(baseColorFactor=[0.05, 0.05, 0.05, 1],
                                                                  metallicFactor=0, roughnessFactor=1)))
         prims.append(dict(attributes=dict(POSITION=len(accs) - 1), material=len(mats) - 1, mode=1))
-    js = dict(asset=dict(version="2.0", generator="skp-ballet"), scene=0, scenes=[dict(nodes=[0])],
+    js = dict(asset=dict(version="2.0", generator="skp-ballet", extras=dict(layers=sorted(model.layers.values()), layers_flagged_off=sorted(model.layers[i] for i in model.layers_off if i in model.layers), materials=len(model.materials))), scene=0, scenes=[dict(nodes=[0])],
               nodes=[dict(mesh=0, name="model")], meshes=[dict(primitives=prims)] if prims else [dict(primitives=[])],
               materials=mats, accessors=accs, bufferViews=views, buffers=[dict(byteLength=len(bin_))])
     j = json.dumps(js, separators=(",", ":")).encode()
