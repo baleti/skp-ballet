@@ -168,3 +168,14 @@ all three Chair instances ('Chair', 'Second Chair', 'Chair' share one definition
 Table/Group/Chair, nested.skp 0x0c/0x25/0x38 for LeafInstance/Engine/Car. Resolving a slot to a definition's entity
 list needs a decoder for the whole archive object stream (definition bodies, nested entity lists), but the reader only
 parses the first entity list, so the link is recorded here and not used.
+
+## Legacy definition trailer and root list (components.skp, byte walk, 2026-11-08)
+After the definition's entity list (ends at 4579): 16-byte id, UTF-16 name, UTF-16 description (empty `ff fe ff 00`),
+a block of zero/flag bytes with the pattern `00 00 f1 53 65` (3 unknown bytes), a CThumbnail object (class
+declaration `ff ff 01 00 0a 00 CThumbnail`, then about 200 bytes of doubles that look like 4x4 matrices/bbox with 1.0
+and 30.0 values), then a u32 (8) and the next entity list, whose first object declares CComponentInstance
+(`ff ff 06 00 12 00 CComponentInstance`). Instance body: attr ref `03 80` + `00 00 00 00 00`, mask `01` + id byte
+(0x25), drawbase `00 00 00 01 01 00 00 00`, u16 0, u16 definition slot (0x0f), 13 f64, name, 16-byte id, then a
+variable tail (class-refs `36 80`/`13 80`/`15 80`, per-instance 4-byte numbers 0x127/0x128/0x129 that count up) that is
+not decoded; it must be understood before the following objects of the list can be walked. The u32 8 does not equal the
+3 instances, so the list also holds other objects.
