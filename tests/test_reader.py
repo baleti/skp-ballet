@@ -472,3 +472,12 @@ def test_legacy_colorize_materials():
     mats = scan_materials(open(p, "rb").read())
     assert sorted(m[0] for m in mats) == ["plain", "shift", "tint", "tint_half"]
     assert all(m[3]["png"][:8] == b"\x89PNG\r\n\x1a\n" for m in mats if len(m) > 3)
+
+
+def test_legacy_sdk_saved_and_blank():
+    import os
+    from skpballet import container, scene
+    d = os.path.join(os.path.dirname(__file__), "data", "legacy")
+    for f, nf in (("sdk_saved_2019.skp", 1), ("sdk_saved_2020.skp", 1), ("legacy_v2019_synthetic.skp", 1), ("blank_v17.skp", 0)):
+        m = scene.load(container.open_skp(os.path.join(d, f)))
+        assert sum(len(x.faces) for x in [m.root]) == nf, f
