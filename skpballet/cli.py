@@ -131,6 +131,10 @@ def main(argv=None):
         ap.add_argument("--no-browser", action="store_true")
     ns = ap.parse_args(rest)
     try:
+        out_arg = getattr(ns, "out", None) or getattr(ns, "outdir", None)
+        if out_arg and (os.path.exists(out_arg) and os.path.samefile(out_arg, ns.file) or out_arg.lower().endswith(".skp")):
+            print("skp-ballet: refusing to write %s: it is (or looks like) a SketchUp file; skp-ballet never writes .skp" % out_arg, file=sys.stderr)
+            return 2
         if cmd == "info" and (ns.layers or ns.bbox):
             m = scene.load(container.open_skp(ns.file))
             if ns.layers:

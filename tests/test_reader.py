@@ -382,3 +382,31 @@ def test_cli_info_bbox_and_layers(capsys):
     assert len(capsys.readouterr().out.strip().splitlines()) == 4
     assert cli.main(["info", "--bbox", p]) == 0
     assert len(capsys.readouterr().out.split()) in (6, 1)
+
+
+def test_reader_never_modifies_input(tmp_path):
+    """No write path exists: load, info, convert and cache must leave the input byte-identical and untouched."""
+    import hashlib, shutil
+    from skpballet import cli
+    for rel in ("nesting_2021.skp", os.path.join("legacy", "edge_flags.skp")):
+        src = tmp_path / os.path.basename(rel)
+        shutil.copy(os.path.join(D, rel), src)
+        os.chmod(src, 0o444)   # read-only: any write attempt would raise
+        h = hashlib.sha256(src.read_bytes()).hexdigest(); st = os.stat(src)
+        assert cli.main(["info", str(src)]) == 0
+        assert cli.main(["convert", str(src), str(tmp_path / "o.glb")]) == 0
+        assert cli.main(["cache", str(src), str(tmp_path / "cache")]) == 0
+        assert hashlib.sha256(src.read_bytes()).hexdigest() == h
+        assert os.stat(src).st_mtime_ns == st.st_mtime_ns and os.stat(src).st_size == st.st_size
+
+
+def test_convert_and_cache_refuse_to_overwrite_the_input(tmp_path):
+    import shutil
+    from skpballet import cli
+    src = tmp_path / "a.skp"
+    shutil.copy(os.path.join(D, "nesting_2021.skp"), src)
+    before = src.read_bytes()
+    assert cli.main(["convert", str(src), str(src)]) != 0
+    assert cli.main(["convert", str(src), str(tmp_path / "b.SKP")]) != 0
+    assert cli.main(["cache", str(src), str(src)]) != 0
+    assert src.read_bytes() == before and not (tmp_path / "b.SKP").exists()
