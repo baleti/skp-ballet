@@ -207,3 +207,12 @@ CText body = attr ref, mask + id (0x1c), draw base, u16 layer, an embedded CSkFo
 font name 'Tahoma', size doubles), then doubles for position/leader vector and a UTF-16 arrow style name ('Dot',
 'Closed arrow'). The fixture has two texts (5 of 8 objects parse before the first CText). Text is not part of the
 mesh export, so CText stays an unsupported class that ends the parse; the layout is not decoded.
+
+### Spike: walking the root list of components.skp (2026-11-08, not committed as code)
+Reading from the `ff ff 06 00 12 00 CComponentInstance` declaration (u32 count 8 just before it) with the existing object
+reader plus a stub instance body (pre, drawbase, u16 def slot, 13 f64, name, 16-byte id) parses the first instance, then
+fails at the `36 80` tag after the id: class-ref to slot 54, undeclared. The slot counter is uncertain because the
+CThumbnail declaration and object before the list consume slots (class 51, object 52 if the first list ended at slot 51), so
+the CComponentInstance class would be 53 and `36 80` (slot 54) would be the first instance object itself, i.e. the tag
+after the id may be a back-reference/trailer rather than a class-ref. Needs the exact slot accounting through the
+definition trailer before the list can be walked.
