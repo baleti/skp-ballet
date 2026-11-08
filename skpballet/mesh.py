@@ -67,14 +67,26 @@ def _split_pinched(loop):
     return out or [loop]
 
 
-def triangulate(loops3d, normal):
+def triangulate(loops3d, normal, _split=True):
     """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples)."""
-    if len(loops3d) == 1:
+    if _split and len(loops3d) == 1:
         parts = _split_pinched(loops3d[0])
         if len(parts) > 1 or len(parts[0]) != len(loops3d[0]):   # loop touches itself or has a zero-width spike at a repeated vertex: triangulate each simple piece
+            def sarea(pt):   # signed area along the face normal
+                x = y = z = 0.0
+                for i in range(len(pt)):
+                    p0, p1 = pt[i], pt[(i + 1) % len(pt)]
+                    x += (p0[1] - p1[1]) * (p0[2] + p1[2]); y += (p0[2] - p1[2]) * (p0[0] + p1[0]); z += (p0[0] - p1[0]) * (p0[1] + p1[1])
+                return (x * normal[0] + y * normal[1] + z * normal[2]) / 2
+            sa = [sarea(pt) for pt in parts]
+            big = max(range(len(parts)), key=lambda i: abs(sa[i]))
+            # pieces wound against the largest one are holes touching the boundary (a slit), not extra faces
+            holes = [pt for i, pt in enumerate(parts) if i != big and sa[i] * sa[big] < 0]
+            rest = [pt for i, pt in enumerate(parts) if i != big and sa[i] * sa[big] >= 0]
+            groups = [[parts[big]] + holes] + [[pt] for pt in rest]
             P3, tris = [], []
-            for part in parts:
-                sp, st = triangulate([part], normal)
+            for g in groups:
+                sp, st = triangulate(g, normal, _split=False)
                 off = len(P3); P3.extend(sp); tris.extend((a + off, b + off, c + off) for a, b, c in st)
             return P3, tris
     nx, ny, nz = normal
@@ -114,6 +126,11 @@ def triangulate(loops3d, normal):
                 break
         hp = hole.index(hi)
         hr = hole[hp:] + hole[:hp]
+        if P2[hi] == P2[outer[best]]:   # hole touches the ring at an existing vertex: splice without a bridge
+            d1 = len(P3)
+            P3.append(P3[hi]); P2.append(P2[hi])
+            outer = outer[: best + 1] + hr[1:] + [d1] + outer[best + 1 :]
+            continue
         d1, d2 = len(P3), len(P3) + 1  # duplicated bridge endpoints get their own node ids
         # copies of the bridge ends are nudged sideways by a tiny amount so the slit has positive width and the ring
         # stays strictly simple (exactly coincident vertices break ear tests); P3 keeps the exact positions

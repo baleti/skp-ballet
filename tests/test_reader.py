@@ -305,3 +305,11 @@ def test_triangulate_two_holes_area():
     P, tr = triangulate([outer, h1, h2], (0, 0, 1))
     exp = 240 - 1.94 * 2.96 - 2.26 * 2.55
     assert abs(_tri_area(P, tr) - exp) < 1e-6    # was 56.4 (ear clipper dropped vertices at coincident bridge copies)
+
+
+def test_triangulate_pinched_hole_touching_boundary_area():
+    from skpballet.mesh import triangulate
+    # outer 10x10 with a triangular hole that touches the boundary at (5,10); loop is one ring revisiting (5,10)
+    loop = [(0, 0, 0), (10, 0, 0), (10, 10, 0), (5, 10, 0), (6, 8, 0), (4, 8, 0), (5, 10, 0), (0, 10, 0)]
+    P, tr = triangulate([loop], (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 98.0) < 1e-9    # was 102 (the hole piece was added as a face)
