@@ -155,3 +155,13 @@ none 0, consistent with "non-zero = slot of a non-default layer"; with materials
 refs (14, 15) follow the list order Roof, Walls. chair_and_table has one distinct ref (16) for two non-default
 layers, so the mapping stays ambiguous and is NOT applied. Layer record tail varies by version (`00 00 01 id` in
 v17, `00 00 00 00` in v20); scan_layers accepts both.
+
+## Legacy instances (observations, components.skp, 2026-11-08)
+The first entity list holds only geometry (no CText/CGroup/instance objects before the first unsupported class on any
+fixture except CText in legacy_text_arrows_2017). Component instances appear later as: transform doubles, then
+the UTF-16 instance name (ff fe ff len ...), then a 16-byte id (fixture bytes 10 11 12 .. 1f, with the 7th byte
+0x46 and 9th byte tweaked: looks like a GUID with version nibble), then `36 80 03 80 ...` flags. For the first
+instance (translation 100 in) the 128 bytes before the name decode as [0 0 0 1, 0 0 0 1, 0 0 0 1, 100 0 0 1]:
+translation x at index 12 and 1.0 at the end, the rotation part is not stored as plain identity rows; the second
+instance (translation 200) has the 200.0 double 26 bytes before the name, the third (300) only 13 bytes, so the record
+layout varies with the transform (probably optional rotation/scale blocks). NOT decoded; instances stay 0 in the model.
