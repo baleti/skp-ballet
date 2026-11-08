@@ -246,13 +246,13 @@ def test_legacy_wired_into_load_and_glb(tmp_path):
 def test_legacy_entity_list_count_validates_parse():
     from skpballet.legacy import scan_faces
     good = ["arcs_2017", "arcs_2020", "chair_and_table", "components", "groups", "nested", "nesting_2017",
-            "nesting_2020", "materials_and_layers", "textures", "layers_extra"]
+            "nesting_2020", "materials_and_layers", "textures", "layers_extra", "image", "uv_positioning"]
     for n in good:
         i = {}
         scan_faces(open(os.path.join(D, "legacy", n + ".skp"), "rb").read(), i)
         assert i["complete"] and i["parsed"] == i["count"], n
-    i = {}   # textured face coords not decoded: must be reported incomplete, never silently complete
-    scan_faces(open(os.path.join(D, "legacy", "image.skp"), "rb").read(), i)
+    i = {}   # an undecoded layout must be reported incomplete, never silently complete
+    scan_faces(open(os.path.join(D, "legacy", "nesting_2013.skp"), "rb").read(), i)
     assert not i["complete"]
 
 
@@ -359,3 +359,10 @@ def test_legacy_file_without_geometry_is_an_empty_model():
     p = os.path.join(os.path.dirname(__file__), "data", "legacy", "single_material_v17.skp")
     m = scene.load(container.open_skp(p))
     assert m.counts()["faces"] == 0
+
+
+def test_legacy_curve_and_texture_coords_decode():
+    from skpballet.legacy import scan_faces
+    i = {}
+    out = scan_faces(open(os.path.join(D, "legacy", "edge_flags.skp"), "rb").read(), i)
+    assert i["parsed"] == i["count"] == 28 and len(out) == 4

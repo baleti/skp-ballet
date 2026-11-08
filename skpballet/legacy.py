@@ -57,6 +57,7 @@ class _R:
                 raise LegacyError("dangling back-ref %d at %d" % (tag, self.p))
             return self.objs[tag]
         oslot = self.slot; self.slot += 1
+        self.objs[oslot] = ("pending", name)   # back-refs to an object still being read (edge -> owning curve)
         o = self.body(name)
         self.objs[oslot] = o
         return o
@@ -154,6 +155,15 @@ class _R:
             self.u16()
             self.nfaces += 1
             return ("f", plane, loops)
+        if name == "CFaceTextureCoords":
+            self.p += 215   # observed fixed length (edge_flags fixture): pre + 6 rows of 4 f64 + 17 unknown bytes
+            return ("ftc",)
+        if name == "CCurve":
+            self.pre(); self.p += 1
+            n = self.u32()
+            if n > 100000:
+                raise LegacyError("implausible curve edge count")
+            return ("curve", [self.obj() for _ in range(n)])
         raise LegacyError("unsupported class %s" % name)
 
 
