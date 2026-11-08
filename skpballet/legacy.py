@@ -177,6 +177,14 @@ def _major(version):
         return 99
 
 
+def _last(objs):
+    """Index after the last non-None object: trailing None entries are list terminators (edge_flags: 2)."""
+    n = len(objs)
+    while n and objs[n - 1] is None:
+        n -= 1
+    return n
+
+
 def scan_faces(data, info=None, version=""):
     """Parse the first entity list: the declaration of its first class is preceded by u16, u32, u32 count (verified on
     the public 2017/2020 fixtures), and exactly `count` objects follow. Returns faces (list of loops of xyz inches).
@@ -201,7 +209,7 @@ def scan_faces(data, info=None, version=""):
             best = objs
     if info is not None:
         info.update(count=count if count < 1 << 30 else None, parsed=len(best),
-                    complete=count < 1 << 30 and len(best) == count and all(o is not None for o in best))
+                    complete=count < 1 << 30 and len(best) == count and all(o is not None for o in best[:_last(best)]))
     faces = [f for f in best if f is not None and f[0] == "f"]
     out = []
     for _, plane, loops in faces:

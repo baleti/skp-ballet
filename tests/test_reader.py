@@ -365,7 +365,7 @@ def test_legacy_curve_and_texture_coords_decode():
     from skpballet.legacy import scan_faces
     i = {}
     out = scan_faces(open(os.path.join(D, "legacy", "edge_flags.skp"), "rb").read(), i)
-    assert i["parsed"] == i["count"] == 28 and len(out) == 4
+    assert i["parsed"] == i["count"] == 28 and len(out) == 4 and i["complete"]   # 2 trailing None terminators
 
 
 def test_legacy_2013_has_no_mask_byte():
