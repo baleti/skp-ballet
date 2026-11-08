@@ -27,6 +27,18 @@ def _strict_in_tri(p, a, b, c, q):
     return d1 > 1e-12 and d2 > 1e-12 and d3 > 1e-12
 
 
+def _locally_inside(P2, ring, k, t):
+    """Does direction ring[k] -> t leave through the interior angle of a CCW ring at vertex k?"""
+    n = len(ring)
+    a, b, c = P2[ring[k - 1]], P2[ring[k]], P2[ring[(k + 1) % n]]
+    def cr(u, w):
+        return u[0] * w[1] - u[1] * w[0]
+    dc, da, dt = (c[0] - b[0], c[1] - b[1]), (a[0] - b[0], a[1] - b[1]), (t[0] - b[0], t[1] - b[1])
+    if cr((b[0] - a[0], b[1] - a[1]), dc) >= 0:   # convex (or straight)
+        return cr(dc, dt) >= 0 and cr(dt, da) >= 0
+    return cr(dc, dt) >= 0 or cr(dt, da) >= 0
+
+
 def _seg_cross(a, b, c, d):
     """proper intersection of segments ab and cd (shared endpoints and touching do not count)"""
     def o(p, q, r):
@@ -121,7 +133,7 @@ def triangulate(loops3d, normal, _split=True):
         others = [h for h in rings[1:] if h is not hole]
         best = cand[0]
         for k in cand[:60]:   # nearest outer vertex whose bridge does not cross the ring or another hole
-            if _bridge_clear(P2, hi, outer[k], outer, hole, others):
+            if _locally_inside(P2, outer, k, P2[hi]) and _bridge_clear(P2, hi, outer[k], outer, hole, others):
                 best = k
                 break
         hp = hole.index(hi)

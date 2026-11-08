@@ -313,3 +313,17 @@ def test_triangulate_pinched_hole_touching_boundary_area():
     loop = [(0, 0, 0), (10, 0, 0), (10, 10, 0), (5, 10, 0), (6, 8, 0), (4, 8, 0), (5, 10, 0), (0, 10, 0)]
     P, tr = triangulate([loop], (0, 0, 1))
     assert abs(_tri_area(P, tr) - 98.0) < 1e-9    # was 102 (the hole piece was added as a face)
+
+
+def test_triangulate_three_holes_shared_bridge_vertex():
+    from skpballet.mesh import triangulate
+    outer = [(0, 0, 0), (60, 0, 0), (60, 4, 0), (0, 4, 0)]
+    H = [[(29.4249, 1.3925), (29.4768, 2.8544), (31.1902, 2.6803), (31.2056, 1.2922)],
+         [(16.9939, 1.2398), (16.9569, 2.8313), (19.5618, 2.7839), (19.4924, 1.1832)],
+         [(51.6688, 1.0566), (51.8481, 3.1073), (54.5177, 3.0605), (54.5872, 1.1106)]]
+    holes = [[(x, y, 0) for x, y in h] for h in H]
+
+    def sh(h):
+        return abs(sum(h[i][0] * h[(i + 1) % 4][1] - h[(i + 1) % 4][0] * h[i][1] for i in range(4))) / 2
+    P, tr = triangulate([outer] + holes, (0, 0, 1))
+    assert abs(_tri_area(P, tr) - (240 - sum(sh(h) for h in holes))) < 1e-6   # was 0.69 of it: a bridge left a vertex through the wrong wedge
