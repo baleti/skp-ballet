@@ -416,3 +416,13 @@ def test_open_without_geometry_does_not_start_viewer(capsys, monkeypatch):
     from skpballet import cli
     monkeypatch.setattr(cli, "serve", lambda *a, **k: (_ for _ in ()).throw(AssertionError("viewer started")))
     assert cli.main([os.path.join(D, "legacy", "single_material_v17.skp")]) == 1
+
+
+def test_legacy_faces_are_triangulated_in_their_own_plane():
+    """Legacy faces carried no normal, so every face was projected on XY: vertical faces got garbage triangles."""
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+    import area_check
+    for n in ("chair_and_table", "uv_positioning"):
+        faces, bad = area_check.check(os.path.join(D, "legacy", n + ".skp"))
+        assert faces and bad == 0, n

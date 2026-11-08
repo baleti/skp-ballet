@@ -225,6 +225,15 @@ def scan_faces(data, info=None, version=""):
     return out
 
 
+def _newell(pts):
+    """Face normal from the outer loop (Newell); None when degenerate so callers keep their default."""
+    x = y = z = 0.0
+    for i, p in enumerate(pts):
+        q = pts[(i + 1) % len(pts)]
+        x += (p[1] - q[1]) * (p[2] + q[2]); y += (p[2] - q[2]) * (p[0] + q[0]); z += (p[0] - q[0]) * (p[1] + q[1])
+    return (x, y, z) if (x * x + y * y + z * z) > 1e-18 else None
+
+
 def load_legacy(skp):
     """LegacySkp -> scene.Model with one root definition (faces only; no groups, materials or layers yet)."""
     from .scene import Model, Definition
@@ -247,7 +256,7 @@ def load_legacy(skp):
             for p in lp:
                 ids.append(vid.setdefault(p, len(vid)))
             ls.append(ids)
-        d.faces.append(dict(id=fi, loops=ls, mat=None, normal=None))
+        d.faces.append(dict(id=fi, loops=ls, mat=None, normal=_newell(faces[fi][0])))
     d.vertices = {i: p for p, i in vid.items()}
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
