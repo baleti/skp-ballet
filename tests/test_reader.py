@@ -295,3 +295,13 @@ def test_triangulate_pinched_loop_area():
     loop = [(0, 0, 0), (2, 0, 0), (1, 1, 0), (2, 2, 0), (0, 2, 0), (1, 1, 0)]   # two triangles touching at (1,1)
     P, tr = triangulate([loop], (0, 0, 1))
     assert abs(_tri_area(P, tr) - 2.0) < 1e-9
+
+
+def test_triangulate_two_holes_area():
+    from skpballet.mesh import triangulate
+    outer = [(0, 0, 0), (40, 0, 0), (40, 6, 0), (0, 6, 0)]
+    h1 = [(15.33, 1.08, 0), (15.33, 4.04, 0), (17.27, 4.04, 0), (17.27, 1.08, 0)]
+    h2 = [(10.64, 1.13, 0), (10.64, 3.68, 0), (12.9, 3.68, 0), (12.9, 1.13, 0)]
+    P, tr = triangulate([outer, h1, h2], (0, 0, 1))
+    exp = 240 - 1.94 * 2.96 - 2.26 * 2.55
+    assert abs(_tri_area(P, tr) - exp) < 1e-6    # was 56.4 (ear clipper dropped vertices at coincident bridge copies)

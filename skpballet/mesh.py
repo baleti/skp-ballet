@@ -20,6 +20,13 @@ def _signed(pts):
     return sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
 
 
+def _strict_in_tri(p, a, b, c, q):
+    d1 = (p[b][0]-p[a][0])*(p[q][1]-p[a][1])-(p[b][1]-p[a][1])*(p[q][0]-p[a][0])
+    d2 = (p[c][0]-p[b][0])*(p[q][1]-p[b][1])-(p[c][1]-p[b][1])*(p[q][0]-p[b][0])
+    d3 = (p[a][0]-p[c][0])*(p[q][1]-p[c][1])-(p[a][1]-p[c][1])*(p[q][0]-p[c][0])
+    return d1 > 1e-12 and d2 > 1e-12 and d3 > 1e-12
+
+
 def _seg_cross(a, b, c, d):
     """proper intersection of segments ab and cd (shared endpoints and touching do not count)"""
     def o(p, q, r):
@@ -108,7 +115,13 @@ def triangulate(loops3d, normal):
         hp = hole.index(hi)
         hr = hole[hp:] + hole[:hp]
         d1, d2 = len(P3), len(P3) + 1  # duplicated bridge endpoints get their own node ids
-        P3.extend((P3[hi], P3[outer[best]])); P2.extend((P2[hi], P2[outer[best]]))
+        # copies of the bridge ends are nudged sideways by a tiny amount so the slit has positive width and the ring
+        # stays strictly simple (exactly coincident vertices break ear tests); P3 keeps the exact positions
+        bx, by = P2[outer[best]][0] - P2[hi][0], P2[outer[best]][1] - P2[hi][1]
+        bl = math.hypot(bx, by) or 1.0
+        ox, oy = -by / bl * bl * 1e-7, bx / bl * bl * 1e-7
+        P3.extend((P3[hi], P3[outer[best]]))
+        P2.extend(((P2[hi][0] + ox, P2[hi][1] + oy), (P2[outer[best]][0] + ox, P2[outer[best]][1] + oy)))
         outer = outer[: best + 1] + hr + [d1, d2] + outer[best + 1 :]
     idx = list(outer)
     tris = []
@@ -124,17 +137,27 @@ def triangulate(loops3d, normal):
     def is_refl(v):
         return _area2(P2, prv[v], v, nxt[v]) < 0
     refl = {v for v in idx if is_refl(v)}
+    holes = len(rings) > 1
+    alive = set(idx)   # with bridged holes the ring touches itself: test every remaining vertex, not only reflex ones
     cur, left, fails = idx[0], n, 0
     while left > 3:
         a, c = prv[cur], nxt[cur]
         ok = cur not in refl and _area2(P2, a, cur, c) > 1e-12
-        if ok and refl:
+        if ok and (alive if holes else refl):
             xs = (P2[a][0], P2[cur][0], P2[c][0]); ys = (P2[a][1], P2[cur][1], P2[c][1])
             x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
             pa, pb, pc = P2[a], P2[cur], P2[c]
-            for r in refl:
+            for r in (alive if holes else refl):
+                if r == a or r == cur or r == c:
+                    continue
                 q = P2[r]
-                if q[0] < x0 or q[0] > x1 or q[1] < y0 or q[1] > y1 or q == pa or q == pb or q == pc:
+                if q[0] < x0 or q[0] > x1 or q[1] < y0 or q[1] > y1:
+                    continue
+                if q == pa or q == pb or q == pc:
+                    # coincident bridge duplicate: blocks only if one of its own neighbours lies strictly inside
+                    if any(_strict_in_tri(P2, a, cur, c, w) or _seg_cross(pa, pc, P2[r], P2[w]) for w in (prv[r], nxt[r])):
+                        ok = False
+                        break
                     continue
                 if _in_tri(P2, a, cur, c, r):
                     ok = False
@@ -149,7 +172,7 @@ def triangulate(loops3d, normal):
                     refl.add(v)
                 else:
                     refl.discard(v)
-            refl.discard(cur)
+            refl.discard(cur); alive.discard(cur)
             cur = c
         else:
             cur = c
@@ -157,7 +180,7 @@ def triangulate(loops3d, normal):
             if fails > left:  # no ear found: drop a vertex to make progress
                 a, c = prv[cur], nxt[cur]
                 nxt[a], prv[c] = c, a
-                refl.discard(cur)
+                refl.discard(cur); alive.discard(cur)
                 left -= 1
                 cur, fails = c, 0
     if left == 3 and _area2(P2, prv[cur], cur, nxt[cur]) != 0:
