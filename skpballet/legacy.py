@@ -157,29 +157,33 @@ class _R:
         raise LegacyError("unsupported class %s" % name)
 
 
-def scan_faces(data):
-    """Parse the first run of face entities (flat sample models). Returns list of faces: each loop list of xyz in inches."""
+def scan_faces(data, info=None):
+    """Parse the first entity list: the declaration of its first class is preceded by u16, u32, u32 count (verified on
+    the public 2017/2020 fixtures), and exactly `count` objects follow. Returns faces (list of loops of xyz inches).
+    If `info` (a dict) is given it receives count, parsed, complete."""
     m = min((x for x in (re.search(rb"\xff\xff.\x00.\x00" + c, data) for c in
              (b"CFace", b"CEdge\x00", b"CVertex", b"CLoop")) if x), key=lambda x: x.start(), default=None)
     if not m:
         raise LegacyError("no geometry class declaration")
+    count = struct.unpack_from("<I", data, m.start() - 4)[0] if m.start() >= 10 else 0
+    if not 0 < count < 5000000:
+        count = 1 << 30
     best = None
-    for base in range(1, 400):   # absolute slot base is unknown: take the first that parses
+    for base in range(1, 400):   # absolute slot base is unknown: take the first that parses most objects
         r = _R(data, m.start()); r.slot = base
-        faces = []
-        while True:
+        objs = []
+        while len(objs) < count:
             try:
-                f = r.obj()
+                objs.append(r.obj())
             except (LegacyError, IndexError, struct.error):
                 break
-            if f is None or f[0] not in "fe":
-                break
-            faces.append(f)
-        if best is None or len(faces) > len(best):
-            best = faces
-    faces = best
+        if best is None or sum(o is not None for o in objs) > sum(o is not None for o in best):
+            best = objs
+    if info is not None:
+        info.update(count=count if count < 1 << 30 else None, parsed=len(best),
+                    complete=count < 1 << 30 and len(best) == count and all(o is not None for o in best))
+    faces = [f for f in best if f is not None and f[0] == "f"]
     out = []
-    faces = [f for f in faces if f[0] == "f"]
     for _, plane, loops in faces:
         ls = []
         for lp in loops:
@@ -198,7 +202,8 @@ def load_legacy(skp):
     from .scene import Model, Definition
     from .container import SkpError
     try:
-        faces = scan_faces(skp.data)
+        inf = {}
+        faces = scan_faces(skp.data, inf)
     except LegacyError as e:
         raise SkpError("legacy file: %s" % e)
     m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
@@ -213,5 +218,6 @@ def load_legacy(skp):
             ls.append(ids)
         d.faces.append(dict(id=fi, loops=ls, mat=None, normal=None))
     d.vertices = {i: p for p, i in vid.items()}
-    m.warnings.append("legacy 2013-2020 reader is experimental: only the first contiguous geometry run is decoded")
+    m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
+                      % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
     return m

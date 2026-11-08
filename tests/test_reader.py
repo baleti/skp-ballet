@@ -241,3 +241,16 @@ def test_legacy_wired_into_load_and_glb(tmp_path):
     m = load(open_skp(os.path.join(D, "legacy", "arcs_2017.skp")))
     assert m.counts()["faces"] == 2 and "legacy" in m.version
     assert write_glb(m, str(tmp_path / "a.glb")) > 0
+
+
+def test_legacy_entity_list_count_validates_parse():
+    from skpballet.legacy import scan_faces
+    good = ["arcs_2017", "arcs_2020", "chair_and_table", "components", "groups", "nested", "nesting_2017",
+            "nesting_2020", "materials_and_layers", "textures", "layers_extra"]
+    for n in good:
+        i = {}
+        scan_faces(open(os.path.join(D, "legacy", n + ".skp"), "rb").read(), i)
+        assert i["complete"] and i["parsed"] == i["count"], n
+    i = {}   # textured face coords not decoded: must be reported incomplete, never silently complete
+    scan_faces(open(os.path.join(D, "legacy", "image.skp"), "rb").read(), i)
+    assert not i["complete"]
