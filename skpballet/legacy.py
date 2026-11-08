@@ -152,6 +152,9 @@ class _R:
                     break
                 us.append(u)
             return ("l", us)
+        if name in ("CComponentInstance", "CGroup"):
+            self.pre(); self.drawbase(); dslot = self.u16(); v = self.f64s(13); nm = self.utf16(); self.p += 16
+            return ("inst", nm, dslot, v[:9], v[9:12], v[12])
         if name == "CFace":
             self.pre(); matslot = self.drawbase(); layer = self.last_layer
             plane = self.f64s(4)
@@ -230,6 +233,54 @@ def scan_faces(data, info=None, version=""):
         out.append(ls)
     if info is not None:
         info["face_matslots"] = fm; info["face_layerrefs"] = fl
+    return out
+
+
+def scan_lists(data, version="", limit=200):
+    """All entity lists of a legacy file in stream order: [(objs, slot_base)]. The first list is found as in scan_faces; each
+    next one by scanning after the end of the previous list for a u32 count followed by an object tag such that exactly
+    `count` objects parse (slot counter offset 0..9 tried; offset 3 is typical: a definition trailer holds a CThumbnail
+    class + object). Definitions are written leaf first, the model root last (verified on components.skp: 3 instances,
+    4 edges, 1 face). Stops when no further list parses; objects of unsupported classes end a list early."""
+    m = min((x for x in (re.search(rb"\xff\xff.\x00.\x00" + c, data) for c in
+             (b"CFace", b"CEdge\x00", b"CVertex", b"CLoop")) if x), key=lambda x: x.start(), default=None)
+    if not m or m.start() < 10:
+        return []
+    count = struct.unpack_from("<I", data, m.start() - 4)[0]
+    if not 0 < count < 5000000:
+        return []
+    r = None
+    for base in range(1, 400):
+        r = _R(data, m.start(), nomask=_major(version) <= 13); r.slot = base
+        try:
+            objs = [r.obj() for _ in range(count)]
+        except (LegacyError, IndexError, struct.error):
+            continue
+        break
+    else:
+        return []
+    out = [(objs, base)]
+    while len(out) < limit:
+        end, found = r.p, None
+        for q in range(end + 4, min(len(data) - 2, end + 4000)):
+            n = struct.unpack_from("<I", data, q - 4)[0]
+            tag = struct.unpack_from("<H", data, q)[0]
+            if not 1 <= n <= 100000 or not (tag == 0xFFFF or (tag & 0x8000 and tag != 0x7FFF)):
+                continue
+            for off in range(0, 10):
+                r2 = _R(data, q, nomask=r.nomask)
+                r2.classes = dict(r.classes); r2.objs = dict(r.objs); r2.slot = r.slot + off
+                try:
+                    objs = [r2.obj() for _ in range(n)]
+                except (LegacyError, IndexError, struct.error):
+                    continue
+                if sum(o is not None for o in objs) >= n - 1 and any(o is not None for o in objs):
+                    found = (objs, r2); break
+            if found:
+                break
+        if not found:
+            break
+        out.append((found[0], r.slot)); r = found[1]
     return out
 
 
