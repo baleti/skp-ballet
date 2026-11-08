@@ -132,3 +132,13 @@ a 16-byte GUID, then references (`36 80` style class-ref to the definition) and 
 (`ff fe ff 0a "attributes"`, key/value pairs). The exact tail layout differs between fixtures (some have 8 extra
 bytes + a 16-byte block before the next object), so definition linkage and group tails are still undecoded.
 CGroup shares the layout (nesting_2017: translation 0, scale 1). Not wired into scene.py yet.
+
+### Legacy CFaceTextureCoords (observed, not decoded)
+
+Body length 215 bytes after the class name (fixed on the public fixtures that parse with this length): 3 bytes
+preamble (attribute ref, mask 0), 4 bytes unknown, then 24 f64 starting at body offset 7 (6 groups of 4 doubles, 32
+bytes apart), then 8 bytes. Values seen: `edge_flags` (default mapping): the first double of every group is 1.0
+(others 0). `uv_positioning` (a face with manual UV positioning): groups 0 and 1 have first double 50.0, groups
+2 to 5 have 1.0, all other doubles 0. So each group is probably `value, 0, 0, 0` padded to 32 bytes, or a 4-vector
+whose other components happened to be 0 here; one non-trivial sample cannot tell. No per-face UV is produced; the
+GLB uses flat colour for legacy textured materials.
