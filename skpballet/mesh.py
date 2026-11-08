@@ -50,12 +50,18 @@ def _seg_cross(a, b, c, d):
 
 def _bridge_clear(P2, hi, oi, outer, hole, others):
     a, b = P2[hi], P2[oi]
+    x0, x1 = (a[0], b[0]) if a[0] < b[0] else (b[0], a[0])
+    y0, y1 = (a[1], b[1]) if a[1] < b[1] else (b[1], a[1])
     for ring in [outer, hole] + others:
         n = len(ring)
+        c = P2[ring[0]]
         for k in range(n):
-            c, d = P2[ring[k]], P2[ring[(k + 1) % n]]
-            if _seg_cross(a, b, c, d):
+            d = P2[ring[k + 1 if k + 1 < n else 0]]
+            # bounding-box reject first: a proper crossing needs overlapping boxes (cheap, avoids most cross tests)
+            if not ((c[0] < x0 and d[0] < x0) or (c[0] > x1 and d[0] > x1) or
+                    (c[1] < y0 and d[1] < y0) or (c[1] > y1 and d[1] > y1)) and _seg_cross(a, b, c, d):
                 return False
+            c = d
     return True
 
 
