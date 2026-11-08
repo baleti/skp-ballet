@@ -3,8 +3,12 @@
 Read SketchUp `.skp` files (sibling of rvt-ballet). Pure Python, no SDK, MIT.
 
     ./skp-ballet FILE.skp            # print info, open the viewer in a browser
-    ./skp-ballet info FILE.skp       # contents only
+    ./skp-ballet info FILE.skp       # contents only (--json, --layers, --bbox)
     ./skp-ballet convert FILE.skp [OUT.glb]
+    ./skp-ballet cache FILE.skp DIR  # rvt-ballet style cache folder
+
+The tool never writes a .skp: convert/cache refuse an output that is the input or ends in `.skp`; a model without
+triangles does not start the viewer (exit 1). `--layers` marks layers whose flag 0x3C8E is 1 as `[off]` (meaning unverified).
 
 Status (read only): SketchUp 2021+ files (zip container with `model.dat`). Lists definitions
 (components/groups), vertices, edges, faces, instances, materials, layers; exports a triangulated
@@ -39,5 +43,7 @@ Without the swiftshader flags the page stays on "loading..." because no WebGL co
 `skp-ballet cache FILE.skp DIR` writes an rvt-ballet style cache folder (indexed `model.glb` with per-vertex
 element index, `meta.json`, `materials.json`; one element per top-level group/component instance). View it with
 `rvt-ballet serve DIR`. No `model.sqlite` is written, so element parameter and search panels stay empty.
-The front-end's default Hidden line style renders blank for these caches (cause not isolated; not the edge batch, not
-flat geometry), while `?style=shaded` (or wireframe) in the URL shows the geometry. Verified in headless chromium on a public fixture.
+The front-end's default Hidden line style draws nothing for models made only of flat faces (edges coplanar with the
+white twin faces; seen on a public flat fixture), while a volumetric public fixture (legacy chair_and_table) renders
+correctly in Hidden line. `?style=shaded` (or wireframe) in the URL shows flat models. An empty model (no
+triangles) never finishes loading in the front-end. Verified in headless chromium on public fixtures.
