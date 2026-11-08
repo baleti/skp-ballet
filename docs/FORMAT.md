@@ -119,3 +119,16 @@ to compare, public fixtures have only zeros), so the reader does not use it for 
 and the image sits beside it (`materials/<id>/*.jpg|png`, 10 files). `avgColor` is 0xAABBGGRR and equals the
 material's colorRed/Green/Blue in all 10 cases, so the average colour is already what the GLB exporter uses. The
 per-face UV data in model.dat is not decoded, so textures are not mapped (item 7 stays open).
+
+### Legacy instance/group record (observed on 5 public fixtures; not implemented in code)
+
+CComponentInstance / CGroup body, after the class declaration (all little-endian):
+`pre` (attribute-container ref; a class-ref `03 80` introduces an empty container `00 00 00 00 00`), then a mask
+byte `01` plus one byte (an id, 0x25/0x33/0x32/0x90 seen), drawbase 8 bytes (`00 00 00 01 01 00 00 00`), u16
+`00 00`, u16 (0x0f, 0x24, 0x38, 0xc7 seen; meaning unknown, maybe a definition/entity id), then **13 f64**:
+a 3x3 rotation/scale block (row-major in the fixtures), translation (x,y,z), and a uniform scale. Example
+`components.skp`: identity 3x3, translation (100,0,0), scale 1. Then the instance name (UTF-16 `ff fe ff <n>`),
+a 16-byte GUID, then references (`36 80` style class-ref to the definition) and the attribute dictionary
+(`ff fe ff 0a "attributes"`, key/value pairs). The exact tail layout differs between fixtures (some have 8 extra
+bytes + a 16-byte block before the next object), so definition linkage and group tails are still undecoded.
+CGroup shares the layout (nesting_2017: translation 0, scale 1). Not wired into scene.py yet.
