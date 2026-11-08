@@ -179,3 +179,9 @@ and 30.0 values), then a u32 (8) and the next entity list, whose first object de
 variable tail (class-refs `36 80`/`13 80`/`15 80`, per-instance 4-byte numbers 0x127/0x128/0x129 that count up) that is
 not decoded; it must be understood before the following objects of the list can be walked. The u32 8 does not equal the
 3 instances, so the list also holds other objects.
+Tail walk (components.skp): after an instance's name and 16-byte id comes `36 80` (a class-ref), then for the first
+instance an inline attribute container (`03 80 ...`, `ff fe ff 0a attributes`, key/value pairs), then immediately the
+NEXT instance's prefix (`01 <id> 0a 00 01 01 01 00 00 00 | u16 | u16 def slot | 13 f64`), so instances are chained
+back to back with only their attribute dictionaries in between, and ids count up (0x25, 0x26, 0x27 ...). Child objects
+`13 80`/`15 80` + `00 00 01 <id>` + 8..24 bytes of doubles (-1.0, 10.0 values) follow some instances (probably
+construction or section items). Scanning (scan_instances) therefore finds every instance without walking the chain.
