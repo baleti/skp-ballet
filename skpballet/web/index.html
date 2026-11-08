@@ -14,7 +14,7 @@ const oc=new OrbitControls(cam,r.domElement);
 new GLTFLoader().load('/model.glb',g=>{s.add(g.scene);
  const b=new THREE.Box3().setFromObject(g.scene),c=b.getCenter(new THREE.Vector3()),z=b.getSize(new THREE.Vector3()).length()||1;
  cam.position.copy(c).add(new THREE.Vector3(z*.7,z*.5,z*.7));oc.target.copy(c);oc.update();
- document.getElementById('i').textContent=(window.INFO||'')+' '+z.toFixed(1)+' m extent'},undefined,e=>document.getElementById('i').textContent='error '+e);
+ const x=(g.parser.json.asset||{}).extras||{},L=x.layers||[],O=x.layers_flagged_off||[];document.getElementById('i').textContent=(window.INFO||'')+' '+z.toFixed(1)+' m extent'+(L.length?' | layers: '+L.map(n=>O.includes(n)?n+' (flagged off?)':n).join(', '):'')},undefined,e=>document.getElementById('i').textContent='error '+e);
 addEventListener('resize',()=>{r.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()});
 (function a(){requestAnimationFrame(a);oc.update();r.render(s,cam)})();
 </script>
