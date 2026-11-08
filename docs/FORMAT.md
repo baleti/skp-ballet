@@ -112,3 +112,10 @@ jittered quads 72/200 -> 8/200 (open, not analysed). Real files: 10 -> 1 face of
 0x3C8E is one byte: 0 in 263 records, 1 in 3. Children seen per layer record: 0x5DC, 0x3C8D, 0x3C8E, 0x3C8F, 0x3C90
 (all 266) and 0x3C91 (130). The rare value 1 fits a "hidden"/"off" flag but has NO ground truth here (no SketchUp
 to compare, public fixtures have only zeros), so the reader does not use it for visibility yet.
+
+### Textures in real 2021-22 files (12 files, 643 materials; aggregate only)
+
+10 of 643 materials have a texture: material.xml gets a `<texture textureFilename xScale yScale avgColor>` child
+and the image sits beside it (`materials/<id>/*.jpg|png`, 10 files). `avgColor` is 0xAABBGGRR and equals the
+material's colorRed/Green/Blue in all 10 cases, so the average colour is already what the GLB exporter uses. The
+per-face UV data in model.dat is not decoded, so textures are not mapped (item 7 stays open).
