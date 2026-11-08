@@ -201,3 +201,9 @@ On the 5 public 2021+ fixtures a face node carries only tags 0x7D0 (id), 0x0DAD 
 0x0DAF (material) where set; no layer tag at all, because no public fixture has a face on a non-default layer. The
 per-entity layer reference therefore cannot be located without a fixture. The OpenSKP notes (CLayer hidden flag = first byte
 after the name) agree with the legacy flag seen in layers_extra ('Hidden') and materials_and_layers ('Walls').
+
+### Legacy CText (legacy_text_arrows_2017, observation only)
+CText body = attr ref, mask + id (0x1c), draw base, u16 layer, an embedded CSkFont object (class declaration, UTF-16
+font name 'Tahoma', size doubles), then doubles for position/leader vector and a UTF-16 arrow style name ('Dot',
+'Closed arrow'). The fixture has two texts (5 of 8 objects parse before the first CText). Text is not part of the
+mesh export, so CText stays an unsupported class that ends the parse; the layout is not decoded.
