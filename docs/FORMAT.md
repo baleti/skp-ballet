@@ -195,3 +195,9 @@ object + its attribute container + class declaration precede its entities); defi
 in code: instance records also occur INSIDE other definitions (chair_and_table), so placing them at the root without
 decoding their parent would be wrong. A safe special case (all candidates share one slot below the base, as in
 components.skp) was not implemented to avoid overfitting.
+
+### 2021+ per-face layer reference (checked 2026-11-08)
+On the 5 public 2021+ fixtures a face node carries only tags 0x7D0 (id), 0x0DAD (normal) and 0x0DAE (loops), plus
+0x0DAF (material) where set; no layer tag at all, because no public fixture has a face on a non-default layer. The
+per-entity layer reference therefore cannot be located without a fixture. The OpenSKP notes (CLayer hidden flag = first byte
+after the name) agree with the legacy flag seen in layers_extra ('Hidden') and materials_and_layers ('Walls').
