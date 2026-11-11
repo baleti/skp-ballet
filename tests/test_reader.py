@@ -630,3 +630,12 @@ def test_cache_edges_off_by_default(tmp_path):
     cache.write_cache(m, str(tmp_path / "b"), "x.skp", edges=True)
     kinds = lambda d: json.dumps(json.load(open(str(tmp_path / d / "meta.json")))["batches"])
     assert "line" not in kinds("a") and "line" in kinds("b")
+
+
+def test_cache_element_names_use_instance_name_first(tmp_path):
+    import json
+    from skpballet import container, scene, cache
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "components.skp")))
+    cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    names = [e[3] for e in json.load(open(str(tmp_path / "c" / "meta.json")))["elements"]]
+    assert names == ["Model", "Chair", "Second Chair", "Chair"]   # loose root geometry first

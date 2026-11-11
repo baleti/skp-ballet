@@ -18,7 +18,7 @@ def _elements(model):
         sub = model.defs.get(inst["def_id"])
         if sub is not None:
             kind = "Group" if sub.is_group else "Component"
-            els.append((sub.name or kind, "Skp" + kind, kind, sub, _compose(IDENT, inst["matrix"]), True))
+            els.append((inst.get("name") or sub.name or kind, "Skp" + kind, kind, sub, _compose(IDENT, inst["matrix"]), True))
     return els
 
 
