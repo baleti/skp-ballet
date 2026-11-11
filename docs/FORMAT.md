@@ -286,3 +286,7 @@ The 10 bytes after an edge's attribute preamble (8 draw-base bytes + u16 layer r
 smooth = byte 6, which would make the common pattern "hidden" (b2=1) for most edges: implausible, so either the byte numbering is shifted by
 the u16 prefix or b2 means something else (e.g. visible). No ground truth for which edges the author hid or softened, so the flags are NOT used
 and all edges are drawn. A fixture with one known hidden and one known soft edge would settle it.
+
+### 2021+ instance name (item 76, 2026-11-11)
+Instance node (0x1964) child 0x1965 holds the instance name as raw UTF-8 (empty when unnamed): nesting_2021 gives Inner, '' and Outer, the same
+names the legacy nesting fixtures give. Other children: 0x1966 13 f64 matrix, 0x1967 definition id (varint), 0x1968 16-byte guid.
