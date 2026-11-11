@@ -639,3 +639,10 @@ def test_cache_element_names_use_instance_name_first(tmp_path):
     cache.write_cache(m, str(tmp_path / "c"), "x.skp")
     names = [e[3] for e in json.load(open(str(tmp_path / "c" / "meta.json")))["elements"]]
     assert names == ["Model", "Chair", "Second Chair", "Chair"]   # loose root geometry first
+
+
+def test_2021_instance_names_read():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(D, "nesting_2021.skp")))
+    names = sorted(i["name"] for d in list(m.defs.values()) + [m.root] for i in d.instances)
+    assert names == ["", "Inner", "Outer"]   # same instance names as the legacy nesting fixtures

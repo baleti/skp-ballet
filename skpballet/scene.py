@@ -100,7 +100,8 @@ def _entities(ent, d, model):
                         r = k.first(0x1967)
                         if m is not None and r is not None and len(m.payload) == 104:
                             n = k.first(0x1965)
-                            d.instances.append(dict(def_id=_var(r), matrix=m.f64s(), id=_ent_id(k)))
+                            d.instances.append(dict(def_id=_var(r), matrix=m.f64s(), id=_ent_id(k),
+                                                    name=n.payload.decode("utf-8", "replace") if n is not None else ""))
                     elif k.children:
                         stack.append(k)
 
