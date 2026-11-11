@@ -566,3 +566,12 @@ def test_legacy_tree_group_vs_component():
     assert g("groups") == [("Table", True), ("Group", True), ("Chair", False)]
     assert g("components") == [("Chair", False)]
     assert [x for x in g("chair_and_table") if x[1]] == []
+
+
+def test_legacy_tree_edges_exported():
+    from skpballet import container, scene, mesh
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "chair_and_table.skp")))
+    assert m.counts()["edges"] == 200
+    lines = []
+    mesh.flatten(m, lines=lines)
+    assert len(lines) // 6 == 368   # segments after instance expansion

@@ -441,8 +441,10 @@ def load_legacy(skp):
             m.layers_off.add(i + 1)
     tree = legacy_tree(skp.data, skp.version)
     if tree is not None:
-        def build(did, name, faces, fslots):
+        def build(did, name, faces, fslots, edges=()):
             dd = Definition(did, name); vid = {}
+            for ei, (pa, pb) in enumerate(edges):
+                dd.edges[ei] = (vid.setdefault(pa, len(vid)), vid.setdefault(pb, len(vid)))
             for fi, loops in enumerate(faces):
                 ls = [[vid.setdefault(p, len(vid)) for p in lp] for lp in loops]
                 k = (fslots[fi] - mi["base_slot"] + 1) if fi < len(fslots) else 0
@@ -450,11 +452,11 @@ def load_legacy(skp):
             dd.vertices = {i: p for p, i in vid.items()}
             return dd
         for k, (faces, fslots, ins) in enumerate(tree[0]):
-            m.defs[k] = build(k, tree[2][k] or "definition %d" % (k + 1), faces, fslots)
+            m.defs[k] = build(k, tree[2][k] or "definition %d" % (k + 1), faces, fslots, tree[4][k])
             m.defs[k].is_group = k in tree[3]
             m.defs[k].instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
         faces, fslots, ins = tree[1]
-        m.root = build(-1, "root", faces, fslots)
+        m.root = build(-1, "root", faces, fslots, tree[4][-1])
         m.root.instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
         m.version = skp.version + " (legacy, experimental: definition tree)"
         m.warnings.append("legacy definition tree: instance-to-definition link inferred from slot order (experimental)")
@@ -478,16 +480,26 @@ def load_legacy(skp):
 
 
 def _list_geometry(objs):
-    """Faces of one entity list -> (faces as loops of xyz, material slots)."""
-    faces, slots = [], []
+    """One entity list -> (faces as loops of xyz, material slots, edges as ((x,y,z),(x,y,z)) unique by object)."""
+    faces, slots, edges, seen = [], [], [], set()
+
+    def add(e):
+        if id(e) not in seen and isinstance(e, tuple) and e[0] == "e":
+            seen.add(id(e)); edges.append((e[1][1:], e[2][1:]))
     for o in objs:
-        if o is None or o[0] != "f":
+        if o is None:
+            continue
+        if o[0] == "e":
+            add(o)
+        if o[0] != "f":
             continue
         ls = []
         for lp in o[2]:
+            for _, e, sense in lp[1]:
+                add(e)
             ls.append([(e[1] if sense == 0 else e[2])[1:] for _, e, sense in lp[1]])
         faces.append(ls); slots.append(o[3])
-    return faces, slots
+    return faces, slots, edges
 
 
 def legacy_tree(data, version=""):
@@ -510,16 +522,16 @@ def legacy_tree(data, version=""):
     out = []
     for objs, _ in lists:
         try:
-            faces, slots = _list_geometry(objs)
+            faces, slots, edges = _list_geometry(objs)
         except (TypeError, IndexError, ValueError):
             return None
         ins = [(refs.index(o[2]), o[1], o[3] + o[4] + (o[5],), o[6]) for o in objs if o and o[0] == "inst"]
-        out.append((faces, slots, ins))
-    for k, (_, _, ins) in enumerate(out[:-1]):
+        out.append((faces, slots, ins, edges))
+    for k, (_, _, ins, _) in enumerate(out[:-1]):
         if any(i >= k for i, _, _, _ in ins):   # leaf first: an instance may only use earlier definitions
             return None
-    return [(f, sl, [x[:3] for x in i]) for f, sl, i in out[:-1]], (out[-1][0], out[-1][1], [x[:3] for x in out[-1][2]]), \
-        [_trailer_names(data, e)[0] for e in ends[:-1]], {i for _, _, ins in out for i, _, _, g in ins if g}
+    return [(f, sl, [x[:3] for x in i]) for f, sl, i, _ in out[:-1]], (out[-1][0], out[-1][1], [x[:3] for x in out[-1][2]]), \
+        [_trailer_names(data, e)[0] for e in ends[:-1]], {i for _, _, ins, _ in out for i, _, _, g in ins if g}, [x[3] for x in out]
 
 
 def _trailer_names(data, pos):
