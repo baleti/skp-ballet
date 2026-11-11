@@ -532,3 +532,10 @@ def test_legacy_tree_accepts_seven_public_fixtures():
         s = container.open_skp(os.path.join(D, "legacy", n + ".skp"))
         t = legacy.legacy_tree(s.data, s.version)
         assert t is not None and len(t[0]) == nd and sum(len(d[2]) for d in t[0] + [t[1]]) == ni, n
+
+
+def test_legacy_tree_definition_names():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "chair_and_table.skp")))
+    assert [d.name for d in m.defs.values()] == ["Leg_Chair", "Seat_Chair", "BackrestFrame", "BackrestCushion", "Backrest",
+                                                  "Chair", "Leg_Table", "Tabletop", "Table"]

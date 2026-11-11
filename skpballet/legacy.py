@@ -254,7 +254,7 @@ def _refs_ok(objs):
     return True
 
 
-def scan_lists(data, version="", limit=200, inst_tail=False):
+def scan_lists(data, version="", limit=200, inst_tail=False, ends=None):
     """All entity lists of a legacy file in stream order: [(objs, slot_base)]. The first list is found as in scan_faces; each
     next one by scanning after the end of the previous list for a u32 count followed by an object tag such that exactly
     `count` objects parse (slot counter offset 0..9 tried; offset 3 is typical: a definition trailer holds a CThumbnail
@@ -278,6 +278,8 @@ def scan_lists(data, version="", limit=200, inst_tail=False):
     else:
         return []
     out = [(objs, base)]
+    if ends is not None:
+        ends.append(r.p)
     while len(out) < limit:
         end, found = r.p, None
         for q in range(end + 4, min(len(data) - 2, end + 4000)):
@@ -299,6 +301,8 @@ def scan_lists(data, version="", limit=200, inst_tail=False):
         if not found:
             break
         out.append((found[0], r.slot)); r = found[1]
+        if ends is not None:
+            ends.append(r.p)
     return out
 
 
@@ -442,7 +446,7 @@ def load_legacy(skp):
             dd.vertices = {i: p for p, i in vid.items()}
             return dd
         for k, (faces, fslots, ins) in enumerate(tree[0]):
-            m.defs[k] = build(k, "definition %d" % (k + 1), faces, fslots)
+            m.defs[k] = build(k, tree[2][k] or "definition %d" % (k + 1), faces, fslots)
             m.defs[k].instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
         faces, fslots, ins = tree[1]
         m.root = build(-1, "root", faces, fslots)
@@ -487,7 +491,8 @@ def legacy_tree(data, version=""):
     N non-root lists, exactly N distinct instance definition refs, and the k-th smallest ref lies within 4 slots of the
     k-th list base (observed ref - base in -3..+3 on 10 public fixtures, see FORMAT.md). Anything else -> None."""
     try:
-        lists = scan_lists(data, version)
+        ends = []
+        lists = scan_lists(data, version, ends=ends)
     except (LegacyError, IndexError, struct.error):
         return None
     if len(lists) < 2:
@@ -508,4 +513,21 @@ def legacy_tree(data, version=""):
     for k, (_, _, ins) in enumerate(out[:-1]):
         if any(i >= k for i, _, _ in ins):   # leaf first: an instance may only use earlier definitions
             return None
-    return out[:-1], out[-1]
+    return out[:-1], out[-1], [_trailer_names(data, e)[0] for e in ends[:-1]]
+
+
+def _trailer_names(data, pos):
+    """First two UTF-16 strings within 60 bytes after a list end: (name, description) of the definition, else ("", "")."""
+    out = []
+    p = pos
+    while p < min(len(data) - 4, pos + 60) and len(out) < 2:
+        if data[p:p + 3] == b"\xff\xfe\xff":
+            n = data[p + 3]
+            raw = data[p + 4:p + 4 + 2 * n]
+            if n < 0xFF and len(raw) == 2 * n:
+                try:
+                    out.append(raw.decode("utf-16-le")); p += 4 + 2 * n; continue
+                except UnicodeDecodeError:
+                    break
+        p += 1
+    return tuple(out + [""] * (2 - len(out)))

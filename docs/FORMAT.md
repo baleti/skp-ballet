@@ -266,3 +266,8 @@ also used as an edge back-ref to slot 61 inside it, so it is a slot, not a count
 allocated in the trailer. Tried: tolerating unknown back-refs below the current slot (gives a false 1-object list; reverted).
 Needed: parse the trailer's inline CLayer/thumbnail objects so their slots are real, and find how the list length is encoded
 (maybe a terminator instead of a count when entities hold sub-lists). Instance record `1b 80` at 5404 follows the edges.
+
+### Legacy definition names (item 48, 2026-11-11)
+The first UTF-16 string within 60 bytes after an entity list end is the definition name (second string = description, usually empty; the
+root list's trailer holds the model location, e.g. 'Boulder (CO)' / 'USA', not a name). Verified on 9 fixtures, e.g. chair_and_table gives
+Leg_Chair, Seat_Chair, BackrestFrame, BackrestCushion, Backrest, Chair, Leg_Table, Tabletop, Table in stream order. Used by legacy_tree.
