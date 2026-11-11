@@ -19,7 +19,9 @@ placement (checked on a public chair and table: composed chair 34 in high, table
 inferred from slot order, so any file that does not fit the strict rules falls back to the first entity list only (faces, no
 instances placed) with a warning. Layer names, materials with embedded PNG textures are listed; UVs are not decoded;
 construction points/lines are skipped by length (from one fixture). Edges are exported as line primitives; materials get flat
-colours; tag visibility flags are not used.
+colours; tag visibility flags are not used. All edges are drawn (hidden/soft edge flags are not decoded). When a legacy file has
+components or groups but fails the strict tree rules, `info` shows the warning "instances are NOT placed" and only the first entity
+list is exported.
 Not yet: textures/UVs, text/dimensions/sections, scenes/cameras, writing (the tool never writes a .skp). Face
 triangulation handles holes, pinched loops, spikes and T-touching vertices (area check on real files: about 0.002
 percent of faces off by more than 0.1 percent). See docs/FORMAT.md.
