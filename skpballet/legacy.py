@@ -171,6 +171,10 @@ class _R:
         if name == "CFaceTextureCoords":
             self.p += 215   # observed fixed length (edge_flags fixture): pre + 6 rows of 4 f64 + 17 unknown bytes
             return ("ftc",)
+        if name in ("CConstructionPoint", "CConstructionLine"):
+            # observed fixed lengths after pre + drawbase (nested.skp only): point 49, line 68 bytes; not decoded
+            self.pre(); self.drawbase(); self.p += 49 if name == "CConstructionPoint" else 68
+            return ("cpt",) if name == "CConstructionPoint" else ("cline",)
         if name == "CCurve":
             self.pre(); self.p += 1
             n = self.u32()
@@ -294,7 +298,7 @@ def scan_lists(data, version="", limit=200, inst_tail=False, ends=None):
                     objs = [r2.obj() for _ in range(n)]
                 except (LegacyError, IndexError, struct.error):
                     continue
-                if sum(o is not None for o in objs) >= n - 1 and any(o is not None for o in objs) and _refs_ok(objs):
+                if sum(o is not None for o in objs) >= n - 2 and any(o is not None for o in objs) and _refs_ok(objs):
                     found = (objs, r2); break
             if found:
                 break

@@ -390,7 +390,7 @@ def test_legacy_tree_nesting_three_versions_same_geometry():
 
 def test_legacy_tree_rejects_inconsistent_files():
     from skpballet import container, legacy
-    for n in ("nested", "arcs_2017", "edge_flags"):
+    for n in ("arcs_2017", "edge_flags"):
         s = container.open_skp(os.path.join(D, "legacy", n + ".skp"))
         assert legacy.legacy_tree(s.data, s.version) is None   # falls back to the first entity list
 
@@ -524,10 +524,10 @@ def test_glb_asset_extras_lists_layers(tmp_path):
     assert ex["layers"] == ["Hidden", "Layer0", "Roof", "Walls"] and ex["layers_flagged_off"] == ["Hidden"]
 
 
-def test_legacy_tree_accepts_seven_public_fixtures():
+def test_legacy_tree_accepts_eight_public_fixtures():
     from skpballet import container, legacy
     want = {"components": (1, 3), "groups": (3, 3), "group_in_definition_flag": (2, 3), "chair_and_table": (9, 15),
-            "legacy_v2019_synthetic": (4, 11), "nesting_2017": (3, 3)}
+            "legacy_v2019_synthetic": (4, 11), "nesting_2017": (3, 3), "nested": (3, 3)}
     for n, (nd, ni) in want.items():
         s = container.open_skp(os.path.join(D, "legacy", n + ".skp"))
         t = legacy.legacy_tree(s.data, s.version)

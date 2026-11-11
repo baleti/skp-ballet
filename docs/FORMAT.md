@@ -271,3 +271,10 @@ Needed: parse the trailer's inline CLayer/thumbnail objects so their slots are r
 The first UTF-16 string within 60 bytes after an entity list end is the definition name (second string = description, usually empty; the
 root list's trailer holds the model location, e.g. 'Boulder (CO)' / 'USA', not a name). Verified on 9 fixtures, e.g. chair_and_table gives
 Leg_Chair, Seat_Chair, BackrestFrame, BackrestCushion, Backrest, Chair, Leg_Table, Tabletop, Table in stream order. Used by legacy_tree.
+
+### nested.skp SOLVED (item 49, 2026-11-11)
+The third list is a normal list: u32 count 61 (0x3d) right before the first `0f 80` (my earlier "slot, not a count" reading was wrong; it is both). Its
+slot offset after list 2 is 6 (offsets 0..9 tried, only 6 parses 56+ objects). It holds edges, 2 instances, a face, arc edges, then CConstructionPoint (49 byte
+body after pre + drawbase + layer) and CConstructionLine (68 bytes), then two trailing 0 terminators that ARE counted in the 61, so a list may end with up
+to 2 None objects (scan_lists now accepts n-2 non-None). Construction body lengths come from this single fixture and are skipped, not decoded.
+legacy_tree now accepts nested.skp: definitions Wheel, Engine, Car, 28 triangles.
