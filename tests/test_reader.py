@@ -584,3 +584,28 @@ def test_legacy_first_list_edges_exported():
         lines = []
         mesh.flatten(m, lines=lines)
         assert m.counts()["edges"] == ne and len(lines) // 6 == ne, n
+
+
+def test_glb_structurally_valid_for_all_fixtures(tmp_path):
+    import glob, json, math, struct
+    from skpballet import mesh, scene, container
+    files = sorted(glob.glob(os.path.join(D, "*.skp")) + glob.glob(os.path.join(D, "legacy", "*.skp")))
+    assert len(files) >= 30
+    for f in files:
+        out = str(tmp_path / "a.glb")
+        mesh.write_glb(scene.load(container.open_skp(f)), out)
+        d = open(out, "rb").read()
+        magic, _, ln = struct.unpack_from("<4sII", d, 0)
+        assert magic == b"glTF" and ln == len(d), f
+        jl = struct.unpack_from("<I", d, 12)[0]
+        js = json.loads(d[20:20 + jl]); bin_ = d[20 + jl + 8:]
+        nv = max([a["count"] for a in js.get("accessors", []) if a["type"] == "VEC3"] or [0])
+        for a in js.get("accessors", []):
+            bv = js["bufferViews"][a["bufferView"]]
+            assert bv["byteOffset"] + bv["byteLength"] <= len(bin_), f
+            off = bv["byteOffset"] + a.get("byteOffset", 0)
+            if a["componentType"] == 5126:
+                k = a["count"] * {"VEC3": 3, "VEC2": 2, "SCALAR": 1, "VEC4": 4}[a["type"]]
+                assert all(math.isfinite(v) for v in struct.unpack_from("<%df" % k, bin_, off)), f
+            if a["componentType"] == 5125 and a["count"]:
+                assert max(struct.unpack_from("<%dI" % a["count"], bin_, off)) < nv, f
