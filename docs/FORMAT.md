@@ -225,3 +225,14 @@ is NOT at a fixed offset from its own list base: refs are mostly 2..4 BELOW a li
 point into the middle of a list or to an object after it (e.g. the definition object written after its list trailer).
 Conclusion: a fixed-offset link rule would be wrong on 3 of 4 fixtures; the whole archive (class-refs, attribute
 containers, thumbnail objects) must be slot-counted exactly before refs can be resolved. load_legacy stays unwired (item 43).
+
+### Instance tail and slot chain (spike 2026-11-11, items 28/44, not code)
+Instance body followed by a u16: it is `36 80` (0x8036) on components.skp but 0 on nesting_2017 (Outer/Inner/unnamed all 0), so it is
+not a constant class tag; the next bytes are the NEXT object's prefix (`03 80` attr container, mask, id), i.e. no wrapper object
+sits between chained instances. Parsing the 16-byte id + one u16 makes nesting_2017 walk its instances inside definition lists
+(list 2 and 3 end with an instance, list 4 is the root with one instance): refs Inner 12, unnamed 36, Outer 57 against list
+bases 14, 33, 55, 76. The bases of lists after the first are only lower-bounded by scan_lists (it accepts the smallest slot
+offset 0..9 that parses), so comparing refs to them proves nothing; the exact slot of each definition object needs the
+definition trailer (definition object, name, description, thumbnail class + object) to be parsed and counted. Unverified idea:
+a ref points at the definition OBJECT, allocated after its list for later definitions, so ref = slot after list end + small k.
+Next step: parse the trailer to get exact slots, then re-check on components (3 instances refs 15) and groups (15/40/56).
