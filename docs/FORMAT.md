@@ -236,3 +236,14 @@ offset 0..9 that parses), so comparing refs to them proves nothing; the exact sl
 definition trailer (definition object, name, description, thumbnail class + object) to be parsed and counted. Unverified idea:
 a ref points at the definition OBJECT, allocated after its list for later definitions, so ref = slot after list end + small k.
 Next step: parse the trailer to get exact slots, then re-check on components (3 instances refs 15) and groups (15/40/56).
+
+### Legacy definition link RESOLVED for tree-consistent files (2026-11-11, item 45; implemented as legacy_tree)
+Rule found on 10 fixtures with instances: the distinct instance definition refs, sorted ascending, correspond one to one to the
+entity lists in stream order (definitions leaf first, root list last); ref minus list base is -3..+3 (chair_and_table 19,138,
+199,260,321,331,573,685,746 vs bases 22,135,196,257,318,329,570,682,743; synthetic 2019 40,65,84,107 vs 43,62,81,104). The def
+object slot is allocated before its list, later ones shift by the trailer (thumbnail class + object + inline layer) slots, which
+is why a fixed offset fails. legacy_tree accepts a file only if lists = distinct refs + 1 and every ref is within 4 of its
+list base and instances only use earlier definitions. Passes on nesting_2013/2017/2020 (3 squares at x 0, 20, 40 inches, identity
+instance transforms, 6 triangles, identical across versions). Rejected (fall back to first list): components, groups, nested,
+chair_and_table, group_in_definition_flag, synthetic 2019, image: their root or later lists do not parse yet (instance child
+objects `13 80`/`15 80` and other classes end the list), not because the rule fails. Instance tail u16 is consumed only in this path.

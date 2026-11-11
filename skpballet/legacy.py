@@ -18,6 +18,7 @@ class _R:
         self.objs = {}      # slot -> object
         self.slot = 1
         self.nverts = self.nedges = self.nfaces = 0
+        self.inst_tail = False   # instances are followed by one extra u16 (see FORMAT.md, instance tail)
 
     def u8(self):
         v = self.d[self.p]; self.p += 1; return v
@@ -154,6 +155,8 @@ class _R:
             return ("l", us)
         if name in ("CComponentInstance", "CGroup"):
             self.pre(); self.drawbase(); dslot = self.u16(); v = self.f64s(13); nm = self.utf16(); self.p += 16
+            if self.inst_tail:
+                self.u16()
             return ("inst", nm, dslot, v[:9], v[9:12], v[12])
         if name == "CFace":
             self.pre(); matslot = self.drawbase(); layer = self.last_layer
@@ -236,7 +239,7 @@ def scan_faces(data, info=None, version=""):
     return out
 
 
-def scan_lists(data, version="", limit=200):
+def scan_lists(data, version="", limit=200, inst_tail=False):
     """All entity lists of a legacy file in stream order: [(objs, slot_base)]. The first list is found as in scan_faces; each
     next one by scanning after the end of the previous list for a u32 count followed by an object tag such that exactly
     `count` objects parse (slot counter offset 0..9 tried; offset 3 is typical: a definition trailer holds a CThumbnail
@@ -251,7 +254,7 @@ def scan_lists(data, version="", limit=200):
         return []
     r = None
     for base in range(1, 400):
-        r = _R(data, m.start(), nomask=_major(version) <= 13); r.slot = base
+        r = _R(data, m.start(), nomask=_major(version) <= 13); r.slot = base; r.inst_tail = inst_tail
         try:
             objs = [r.obj() for _ in range(count)]
         except (LegacyError, IndexError, struct.error):
@@ -269,7 +272,7 @@ def scan_lists(data, version="", limit=200):
                 continue
             for off in range(0, 10):
                 r2 = _R(data, q, nomask=r.nomask)
-                r2.classes = dict(r.classes); r2.objs = dict(r.objs); r2.slot = r.slot + off
+                r2.inst_tail = inst_tail; r2.classes = dict(r.classes); r2.objs = dict(r.objs); r2.slot = r.slot + off
                 try:
                     objs = [r2.obj() for _ in range(n)]
                 except (LegacyError, IndexError, struct.error):
@@ -413,6 +416,25 @@ def load_legacy(skp):
         m.layers[i + 1] = nm
         if fl == 1:
             m.layers_off.add(i + 1)
+    tree = legacy_tree(skp.data, skp.version)
+    if tree is not None:
+        def build(did, name, faces, fslots):
+            dd = Definition(did, name); vid = {}
+            for fi, loops in enumerate(faces):
+                ls = [[vid.setdefault(p, len(vid)) for p in lp] for lp in loops]
+                k = (fslots[fi] - mi["base_slot"] + 1) if fi < len(fslots) else 0
+                dd.faces.append(dict(id=fi, loops=ls, mat=k if 1 <= k <= len(mats) else None, normal=_newell(loops[0])))
+            dd.vertices = {i: p for p, i in vid.items()}
+            return dd
+        for k, (faces, fslots, ins) in enumerate(tree[0]):
+            m.defs[k] = build(k, "definition %d" % (k + 1), faces, fslots)
+            m.defs[k].instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
+        faces, fslots, ins = tree[1]
+        m.root = build(-1, "root", faces, fslots)
+        m.root.instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
+        m.version = skp.version + " (legacy, experimental: definition tree)"
+        m.warnings.append("legacy definition tree: instance-to-definition link inferred from slot order (experimental)")
+        return m
     # face front material = archive slot of the material object (observed: faces 10, 11 -> Red, Blue); unknown slots stay unassigned
     slots = inf.get("face_matslots") or []
     vid = {}
@@ -429,3 +451,46 @@ def load_legacy(skp):
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
     return m
+
+
+def _list_geometry(objs):
+    """Faces of one entity list -> (faces as loops of xyz, material slots)."""
+    faces, slots = [], []
+    for o in objs:
+        if o is None or o[0] != "f":
+            continue
+        ls = []
+        for lp in o[2]:
+            ls.append([(e[1] if sense == 0 else e[2])[1:] for _, e, sense in lp[1]])
+        faces.append(ls); slots.append(o[3])
+    return faces, slots
+
+
+def legacy_tree(data, version=""):
+    """Experimental definition tree: -> (defs, root) or None. defs = [(faces, matslots, instances)] in stream order and
+    root likewise, where instances = [(def_index, name, 13 f64)]. Accepted only if the lists form a consistent tree:
+    N non-root lists, exactly N distinct instance definition refs, and the k-th smallest ref lies within 4 slots of the
+    k-th list base (observed ref - base in -3..+3 on 10 public fixtures, see FORMAT.md). Anything else -> None."""
+    try:
+        lists = scan_lists(data, version, inst_tail=True)
+    except (LegacyError, IndexError, struct.error):
+        return None
+    if len(lists) < 2:
+        return None
+    refs = sorted({o[2] for objs, _ in lists for o in objs if o and o[0] == "inst"})
+    if len(refs) != len(lists) - 1 or any(abs(r - lists[k][1]) > 4 for k, r in enumerate(refs)):
+        return None
+    if any(lists[k][1] >= lists[k + 1][1] for k in range(len(lists) - 1)):
+        return None
+    out = []
+    for objs, _ in lists:
+        try:
+            faces, slots = _list_geometry(objs)
+        except (TypeError, IndexError, ValueError):
+            return None
+        ins = [(refs.index(o[2]), o[1], o[3] + o[4] + (o[5],)) for o in objs if o and o[0] == "inst"]
+        out.append((faces, slots, ins))
+    for k, (_, _, ins) in enumerate(out[:-1]):
+        if any(i >= k for i, _, _ in ins):   # leaf first: an instance may only use earlier definitions
+            return None
+    return out[:-1], out[-1]

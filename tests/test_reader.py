@@ -372,7 +372,27 @@ def test_legacy_2013_has_no_mask_byte():
     from skpballet import container, scene
     m = scene.load(container.open_skp(os.path.join(D, "legacy", "nesting_2013.skp")))
     c = m.counts()
-    assert c["faces"] == 1 and c["vertices"] == 4 and "INCOMPLETE" not in m.warnings[0]
+    assert c["faces"] == 3 and c["vertices"] == 12 and c["definitions"] == 3   # definition tree (was 1 face before item 45)
+    assert not any("INCOMPLETE" in w for w in m.warnings)
+
+
+def test_legacy_tree_nesting_three_versions_same_geometry():
+    from skpballet import container, scene, mesh
+    res = []
+    for y in ("2013", "2017", "2020"):
+        m = scene.load(container.open_skp(os.path.join(D, "legacy", "nesting_%s.skp" % y)))
+        assert [len(d.instances) for d in m.defs.values()] == [0, 1, 1] and len(m.root.instances) == 1
+        flat = mesh.flatten(m)
+        assert sum(len(v) // 9 for v in flat.values()) == 6   # 3 squares, 2 triangles each
+        res.append(sorted(sum(flat.values(), [])))
+    assert res[0] == res[1] == res[2]
+
+
+def test_legacy_tree_rejects_inconsistent_files():
+    from skpballet import container, legacy
+    for n in ("components", "groups", "nested", "chair_and_table", "arcs_2017"):
+        s = container.open_skp(os.path.join(D, "legacy", n + ".skp"))
+        assert legacy.legacy_tree(s.data, s.version) is None   # falls back to the first entity list
 
 
 def test_cli_info_bbox_and_layers(capsys):
