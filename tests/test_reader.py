@@ -539,3 +539,22 @@ def test_legacy_tree_definition_names():
     m = scene.load(container.open_skp(os.path.join(D, "legacy", "chair_and_table.skp")))
     assert [d.name for d in m.defs.values()] == ["Leg_Chair", "Seat_Chair", "BackrestFrame", "BackrestCushion", "Backrest",
                                                   "Chair", "Leg_Table", "Tabletop", "Table"]
+
+
+def test_legacy_tree_composed_dimensions_chair_and_table():
+    # leg 17 + seat 2 + backrest 15 = chair 34; table leg 20.5 + top 1.5 = 22 (inches): checks definition links and instance transforms
+    from skpballet import container, scene, mesh
+
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "chair_and_table.skp")))
+
+    def pts(d, M=mesh.IDENT):
+        out = [mesh._mul(M, v) for v in d.vertices.values()]
+        for i in d.instances:
+            out += pts(m.defs[i["def_id"]], mesh._compose(M, i["matrix"]))
+        return out
+
+    by = {d.name: d for d in m.defs.values()}
+    ext = lambda d: [round(max(c) - min(c), 1) for c in zip(*pts(d))]
+    assert ext(by["Chair"]) == [18.0, 17.0, 34.0]
+    assert ext(by["Table"]) == [24.0, 20.0, 22.0]
+    assert ext(m.root)[2] == 34.0
