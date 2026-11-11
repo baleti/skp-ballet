@@ -216,3 +216,12 @@ CThumbnail declaration and object before the list consume slots (class 51, objec
 the CComponentInstance class would be 53 and `36 80` (slot 54) would be the first instance object itself, i.e. the tag
 after the id may be a back-reference/trailer rather than a class-ref. Needs the exact slot accounting through the
 definition trailer before the list can be walked.
+
+### scan_lists bases vs instance definition slots (measured 2026-11-11, 17 fixtures with lists)
+List bases from scan_lists (slot of first object, offset guessed 0..9) and instance def refs:
+components lists 19,51 refs 15; nesting_2013/2017/2020 lists 14,33,55,76 refs 12,57; groups lists 18,37,53,72 refs 15/40/56;
+nested lists 15,34 refs 12/37/56. Differences ref-minus-base: -4; -2,+2; -3,+3,+3; -3,+3,+22. The def object therefore
+is NOT at a fixed offset from its own list base: refs are mostly 2..4 BELOW a list base but also above one, so a ref can
+point into the middle of a list or to an object after it (e.g. the definition object written after its list trailer).
+Conclusion: a fixed-offset link rule would be wrong on 3 of 4 fixtures; the whole archive (class-refs, attribute
+containers, thumbnail objects) must be slot-counted exactly before refs can be resolved. load_legacy stays unwired (item 43).
