@@ -575,3 +575,12 @@ def test_legacy_tree_edges_exported():
     lines = []
     mesh.flatten(m, lines=lines)
     assert len(lines) // 6 == 368   # segments after instance expansion
+
+
+def test_legacy_first_list_edges_exported():
+    from skpballet import container, scene, mesh
+    for n, ne in (("edge_flags", 23), ("arcs_2017", 49), ("image", 4)):
+        m = scene.load(container.open_skp(os.path.join(D, "legacy", n + ".skp")))
+        lines = []
+        mesh.flatten(m, lines=lines)
+        assert m.counts()["edges"] == ne and len(lines) // 6 == ne, n

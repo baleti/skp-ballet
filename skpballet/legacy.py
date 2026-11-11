@@ -240,6 +240,10 @@ def scan_faces(data, info=None, version=""):
         out.append(ls)
     if info is not None:
         info["face_matslots"] = fm; info["face_layerrefs"] = fl
+        try:
+            info["edges"] = _list_geometry(best)[2]
+        except (TypeError, IndexError, ValueError):
+            info["edges"] = []
     return out
 
 
@@ -473,6 +477,8 @@ def load_legacy(skp):
             ls.append(ids)
         mi_ = (slots[fi] - mi["base_slot"] + 1) if fi < len(slots) else 0
         d.faces.append(dict(id=fi, loops=ls, mat=mi_ if 1 <= mi_ <= len(mats) else None, normal=_newell(faces[fi][0])))
+    for ei, (pa, pb) in enumerate(inf.get("edges") or []):
+        d.edges[ei] = (vid.setdefault(pa, len(vid)), vid.setdefault(pb, len(vid)))
     d.vertices = {i: p for p, i in vid.items()}
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
