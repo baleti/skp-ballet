@@ -157,7 +157,7 @@ class _R:
             self.pre(); self.drawbase(); dslot = self.u16(); v = self.f64s(13); nm = self.utf16(); self.p += 16
             if self.inst_tail:
                 self.u16()
-            return ("inst", nm, dslot, v[:9], v[9:12], v[12])
+            return ("inst", nm, dslot, v[:9], v[9:12], v[12], name == "CGroup")
         if name == "CFace":
             self.pre(); matslot = self.drawbase(); layer = self.last_layer
             plane = self.f64s(4)
@@ -451,6 +451,7 @@ def load_legacy(skp):
             return dd
         for k, (faces, fslots, ins) in enumerate(tree[0]):
             m.defs[k] = build(k, tree[2][k] or "definition %d" % (k + 1), faces, fslots)
+            m.defs[k].is_group = k in tree[3]
             m.defs[k].instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
         faces, fslots, ins = tree[1]
         m.root = build(-1, "root", faces, fslots)
@@ -512,12 +513,13 @@ def legacy_tree(data, version=""):
             faces, slots = _list_geometry(objs)
         except (TypeError, IndexError, ValueError):
             return None
-        ins = [(refs.index(o[2]), o[1], o[3] + o[4] + (o[5],)) for o in objs if o and o[0] == "inst"]
+        ins = [(refs.index(o[2]), o[1], o[3] + o[4] + (o[5],), o[6]) for o in objs if o and o[0] == "inst"]
         out.append((faces, slots, ins))
     for k, (_, _, ins) in enumerate(out[:-1]):
-        if any(i >= k for i, _, _ in ins):   # leaf first: an instance may only use earlier definitions
+        if any(i >= k for i, _, _, _ in ins):   # leaf first: an instance may only use earlier definitions
             return None
-    return out[:-1], out[-1], [_trailer_names(data, e)[0] for e in ends[:-1]]
+    return [(f, sl, [x[:3] for x in i]) for f, sl, i in out[:-1]], (out[-1][0], out[-1][1], [x[:3] for x in out[-1][2]]), \
+        [_trailer_names(data, e)[0] for e in ends[:-1]], {i for _, _, ins in out for i, _, _, g in ins if g}
 
 
 def _trailer_names(data, pos):

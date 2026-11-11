@@ -558,3 +558,11 @@ def test_legacy_tree_composed_dimensions_chair_and_table():
     assert ext(by["Chair"]) == [18.0, 17.0, 34.0]
     assert ext(by["Table"]) == [24.0, 20.0, 22.0]
     assert ext(m.root)[2] == 34.0
+
+
+def test_legacy_tree_group_vs_component():
+    from skpballet import container, scene
+    g = lambda n: [(d.name, d.is_group) for d in scene.load(container.open_skp(os.path.join(D, "legacy", n + ".skp"))).defs.values()]
+    assert g("groups") == [("Table", True), ("Group", True), ("Chair", False)]
+    assert g("components") == [("Chair", False)]
+    assert [x for x in g("chair_and_table") if x[1]] == []
