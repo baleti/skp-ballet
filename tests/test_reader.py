@@ -390,7 +390,7 @@ def test_legacy_tree_nesting_three_versions_same_geometry():
 
 def test_legacy_tree_rejects_inconsistent_files():
     from skpballet import container, legacy
-    for n in ("components", "groups", "nested", "chair_and_table", "arcs_2017"):
+    for n in ("nested", "arcs_2017", "edge_flags"):
         s = container.open_skp(os.path.join(D, "legacy", n + ".skp"))
         assert legacy.legacy_tree(s.data, s.version) is None   # falls back to the first entity list
 
@@ -498,9 +498,9 @@ def test_legacy_sdk_saved_and_blank():
     import os
     from skpballet import container, scene
     d = os.path.join(os.path.dirname(__file__), "data", "legacy")
-    for f, nf in (("sdk_saved_2019.skp", 1), ("sdk_saved_2020.skp", 1), ("legacy_v2019_synthetic.skp", 1), ("blank_v17.skp", 0)):
+    for f, nf in (("sdk_saved_2019.skp", 1), ("sdk_saved_2020.skp", 1), ("legacy_v2019_synthetic.skp", 4), ("blank_v17.skp", 0)):
         m = scene.load(container.open_skp(os.path.join(d, f)))
-        assert sum(len(x.faces) for x in [m.root]) == nf, f
+        assert sum(len(x.faces) for x in [m.root, *m.defs.values()]) == nf, f   # synthetic 2019 is a definition tree
 
 
 def test_legacy_instance_records():
@@ -522,3 +522,13 @@ def test_glb_asset_extras_lists_layers(tmp_path):
     j = json.loads(d[20:20 + struct.unpack_from("<I", d, 12)[0]])
     ex = j["asset"]["extras"]
     assert ex["layers"] == ["Hidden", "Layer0", "Roof", "Walls"] and ex["layers_flagged_off"] == ["Hidden"]
+
+
+def test_legacy_tree_accepts_seven_public_fixtures():
+    from skpballet import container, legacy
+    want = {"components": (1, 3), "groups": (3, 3), "group_in_definition_flag": (2, 3), "chair_and_table": (9, 15),
+            "legacy_v2019_synthetic": (4, 11), "nesting_2017": (3, 3)}
+    for n, (nd, ni) in want.items():
+        s = container.open_skp(os.path.join(D, "legacy", n + ".skp"))
+        t = legacy.legacy_tree(s.data, s.version)
+        assert t is not None and len(t[0]) == nd and sum(len(d[2]) for d in t[0] + [t[1]]) == ni, n

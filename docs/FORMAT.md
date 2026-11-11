@@ -247,3 +247,13 @@ list base and instances only use earlier definitions. Passes on nesting_2013/201
 instance transforms, 6 triangles, identical across versions). Rejected (fall back to first list): components, groups, nested,
 chair_and_table, group_in_definition_flag, synthetic 2019, image: their root or later lists do not parse yet (instance child
 objects `13 80`/`15 80` and other classes end the list), not because the rule fails. Instance tail u16 is consumed only in this path.
+
+### Item 46 (2026-11-11): instance tail correction and exact list slots
+Correction to the spike above: the u16 after an instance's 16-byte id is NOT part of the instance. In components.skp it is `36 80`,
+the class-ref TAG of the next list object (the instance class, declared at slot 54); in nesting it is the list terminator 0.
+With no tail consumption scan_lists walks root lists of components/groups/chair_and_table/synthetic 2019/group_in_definition_flag
+completely. Slot offsets of later lists are now validated by back-reference kinds (edge use -> edge -> vertex, `_refs_ok`),
+since a wrong offset aliases back-refs onto vertices; this makes each later list base exact. legacy_tree now accepts 7 public
+fixtures (chair_and_table: 9 definitions, 15 instances, 86 faces, 352 triangles; components: 3 faces; groups; v2019 synthetic:
+4 definitions, 11 instances). Still rejected: nested (lists end early), arcs/edge_flags (no instances). Instance transforms are not
+independently verified beyond components.skp (bbox 340 in = instance at y 300 scaled 2 over a 20 in chair).

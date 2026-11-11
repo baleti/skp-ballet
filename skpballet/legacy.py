@@ -239,6 +239,21 @@ def scan_faces(data, info=None, version=""):
     return out
 
 
+def _refs_ok(objs):
+    """Back-references must land on the right kinds (edge use -> edge -> vertices): a wrong slot offset aliases them."""
+    for o in objs:
+        if o is None:
+            continue
+        if o[0] == "f":
+            for lp in o[2]:
+                for eu in (lp[1] if lp and lp[0] == "l" else ()):
+                    e = eu[1]
+                    if not (isinstance(e, tuple) and e[0] == "e" and isinstance(e[1], tuple) and e[1][0] == "v"
+                            and isinstance(e[2], tuple) and e[2][0] == "v"):
+                        return False
+    return True
+
+
 def scan_lists(data, version="", limit=200, inst_tail=False):
     """All entity lists of a legacy file in stream order: [(objs, slot_base)]. The first list is found as in scan_faces; each
     next one by scanning after the end of the previous list for a u32 count followed by an object tag such that exactly
@@ -277,7 +292,7 @@ def scan_lists(data, version="", limit=200, inst_tail=False):
                     objs = [r2.obj() for _ in range(n)]
                 except (LegacyError, IndexError, struct.error):
                     continue
-                if sum(o is not None for o in objs) >= n - 1 and any(o is not None for o in objs):
+                if sum(o is not None for o in objs) >= n - 1 and any(o is not None for o in objs) and _refs_ok(objs):
                     found = (objs, r2); break
             if found:
                 break
@@ -472,7 +487,7 @@ def legacy_tree(data, version=""):
     N non-root lists, exactly N distinct instance definition refs, and the k-th smallest ref lies within 4 slots of the
     k-th list base (observed ref - base in -3..+3 on 10 public fixtures, see FORMAT.md). Anything else -> None."""
     try:
-        lists = scan_lists(data, version, inst_tail=True)
+        lists = scan_lists(data, version)
     except (LegacyError, IndexError, struct.error):
         return None
     if len(lists) < 2:
