@@ -257,3 +257,12 @@ since a wrong offset aliases back-refs onto vertices; this makes each later list
 fixtures (chair_and_table: 9 definitions, 15 instances, 86 faces, 352 triangles; components: 3 faces; groups; v2019 synthetic:
 4 definitions, 11 instances). Still rejected: nested (lists end early), arcs/edge_flags (no instances). Instance transforms are not
 independently verified beyond components.skp (bbox 340 in = instance at y 300 scaled 2 over a 20 in chair).
+
+### nested.skp third list (item 47, 2026-11-11, NOT solved)
+After list 2 (ends 4743) comes the usual trailer (`Engine` name, `00 f1 53 65` pad, thumbnail class slot 34 `22 80`, an inline CLayer at 5031
+with name Layer0). The third list sits at about 5152..5449 and uses CEdge (`0f 80`) and CVertex (`11 80`) objects with ids 0x27..0x2f,
+but has no `u32 count` that scan_lists recognises (bytes before the first `0f 80` are `3a 00 00 00 00 00 3d 00 00 00`; 0x3d is
+also used as an edge back-ref to slot 61 inside it, so it is a slot, not a count) and its edges reference vertices and layer objects
+allocated in the trailer. Tried: tolerating unknown back-refs below the current slot (gives a false 1-object list; reverted).
+Needed: parse the trailer's inline CLayer/thumbnail objects so their slots are real, and find how the list length is encoded
+(maybe a terminator instead of a count when entities hold sub-lists). Instance record `1b 80` at 5404 follows the edges.
