@@ -278,3 +278,11 @@ slot offset after list 2 is 6 (offsets 0..9 tried, only 6 parses 56+ objects). I
 body after pre + drawbase + layer) and CConstructionLine (68 bytes), then two trailing 0 terminators that ARE counted in the 61, so a list may end with up
 to 2 None objects (scan_lists now accepts n-2 non-None). Construction body lengths come from this single fixture and are skipped, not decoded.
 legacy_tree now accepts nested.skp: definitions Wheel, Engine, Car, 28 triangles.
+
+### Legacy edge draw base bytes (item 59, edge_flags.skp, observation only)
+The 10 bytes after an edge's attribute preamble (8 draw-base bytes + u16 layer ref), written b0..b9. Distinct patterns on this fixture's edges:
+`00 00 01 01 01 01 01 00 00 00` (the common one, also on loops/vertices-bearing objects), `00 00 00 01 01 01 00 00 00 00` (b5=1),
+`00 00 00 01 01 00 01 00 00 00` (b6=1), `00 00 00 01 01 00 00 00 00 00` (all zero after b4). OpenSKP notes name hidden = byte 2, soft = byte 5,
+smooth = byte 6, which would make the common pattern "hidden" (b2=1) for most edges: implausible, so either the byte numbering is shifted by
+the u16 prefix or b2 means something else (e.g. visible). No ground truth for which edges the author hid or softened, so the flags are NOT used
+and all edges are drawn. A fixture with one known hidden and one known soft edge would settle it.
