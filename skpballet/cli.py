@@ -126,6 +126,7 @@ def main(argv=None):
         ap.add_argument("out", nargs="?")
     if cmd == "cache":
         ap.add_argument("outdir")
+        ap.add_argument("--edges", action="store_true", help="also write edge line batches (they spoil the front-end Hidden line style)")
     if cmd == "open":
         ap.add_argument("--port", type=int, default=0)
         ap.add_argument("--no-browser", action="store_true")
@@ -152,7 +153,7 @@ def main(argv=None):
             return 0
         if cmd == "cache":
             from . import cache
-            print(cache.write_cache(m, ns.outdir, os.path.basename(ns.file)), "->", ns.outdir)
+            print(cache.write_cache(m, ns.outdir, os.path.basename(ns.file), edges=ns.edges), "->", ns.outdir)
             return 0
         if cmd == "convert":
             out = ns.out or os.path.splitext(ns.file)[0] + ".glb"

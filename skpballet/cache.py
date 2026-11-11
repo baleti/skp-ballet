@@ -22,7 +22,7 @@ def _elements(model):
     return els
 
 
-def build(model, max_depth=24):
+def build(model, max_depth=24, edges=False):
     """-> (elements, batches). batches: dict key -> dict(kind, mat, pos, eidx, idx, ranges)"""
     batches = {}
     elements = []
@@ -53,7 +53,7 @@ def build(model, max_depth=24):
                 if b["nt"] > start:
                     b["ranges"].extend((ei, start, b["nt"] - start))
             segs = [(d.vertices[a], d.vertices[c]) for a, c in d.edges.values() if a in d.vertices and c in d.vertices]
-            if segs:
+            if segs and edges:
                 b = batch("line", None); start = b["nt"]
                 for pa, pb in segs:
                     for p in (pa, pb):
@@ -76,9 +76,9 @@ def build(model, max_depth=24):
     return elements, batches
 
 
-def write_cache(model, outdir, name="model.skp"):
+def write_cache(model, outdir, name="model.skp", edges=False):
     os.makedirs(outdir, exist_ok=True)
-    elements, batches = build(model)
+    elements, batches = build(model, edges=edges)
     mats = [dict(name="default", rgb=[200, 200, 200], alpha=1.0, tex_class="none")]
     midx = {None: 0}
     for k, mt in model.materials.items():

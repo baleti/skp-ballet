@@ -620,3 +620,13 @@ def test_legacy_fallback_warns_when_instances_not_placed(tmp_path):
     assert any("NOT placed" in w for w in m.warnings)
     good = legacy.load_legacy(container.open_skp(os.path.join(D, "legacy", "components.skp")))
     assert not any("NOT placed" in w for w in good.warnings)
+
+
+def test_cache_edges_off_by_default(tmp_path):
+    import json
+    from skpballet import container, scene, cache
+    m = scene.load(container.open_skp(os.path.join(D, "legacy", "chair_and_table.skp")))
+    cache.write_cache(m, str(tmp_path / "a"), "x.skp")
+    cache.write_cache(m, str(tmp_path / "b"), "x.skp", edges=True)
+    kinds = lambda d: json.dumps(json.load(open(str(tmp_path / d / "meta.json")))["batches"])
+    assert "line" not in kinds("a") and "line" in kinds("b")

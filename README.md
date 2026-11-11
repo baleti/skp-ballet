@@ -50,6 +50,6 @@ Without the swiftshader flags the page stays on "loading..." because no WebGL co
 element index, `meta.json`, `materials.json`; one element per top-level group/component instance). View it with
 `rvt-ballet serve DIR`. No `model.sqlite` is written, so element parameter and search panels stay empty.
 The front-end's default Hidden line style draws nothing for models made only of flat faces (edges coplanar with the
-white twin faces; seen on a public flat fixture), while the volumetric public fixture legacy chair_and_table, now with edge lines (2026-11-11), shows only faint dotted
-edges in Hidden line (white faces on white, edges z-fight with faces; not investigated) and renders fine in Shaded. `?style=shaded` (or wireframe) in the URL shows flat models. An empty model (no
+white twin faces; seen on a public flat fixture), while a volumetric public fixture (legacy chair_and_table) renders correctly in Hidden line. Edge line batches spoil that
+style (measured 2026-11-11: only faint dotted edges), so `cache` omits them unless `--edges` is given. `?style=shaded` (or wireframe) in the URL shows flat models. An empty model (no
 triangles) never finishes loading in the front-end. Verified in headless chromium on public fixtures.
