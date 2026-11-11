@@ -480,6 +480,8 @@ def load_legacy(skp):
     for ei, (pa, pb) in enumerate(inf.get("edges") or []):
         d.edges[ei] = (vid.setdefault(pa, len(vid)), vid.setdefault(pb, len(vid)))
     d.vertices = {i: p for p, i in vid.items()}
+    if b"CComponentInstance" in skp.data or b"CGroup" in skp.data:
+        m.warnings.append("legacy file has components/groups but their lists do not fit the strict definition-tree rules: instances are NOT placed")
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
     return m

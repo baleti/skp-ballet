@@ -609,3 +609,14 @@ def test_glb_structurally_valid_for_all_fixtures(tmp_path):
                 assert all(math.isfinite(v) for v in struct.unpack_from("<%df" % k, bin_, off)), f
             if a["componentType"] == 5125 and a["count"]:
                 assert max(struct.unpack_from("<%dI" % a["count"], bin_, off)) < nv, f
+
+
+def test_legacy_fallback_warns_when_instances_not_placed(tmp_path):
+    from skpballet import container, legacy
+    base = bytearray(open(os.path.join(D, "legacy", "components.skp"), "rb").read())
+    base[base.find(b"CComponentInstance") + 20] ^= 0x40   # breaks the tree rules, class names stay
+    p = tmp_path / "x.skp"; p.write_bytes(bytes(base))
+    m = legacy.load_legacy(container.open_skp(str(p)))
+    assert any("NOT placed" in w for w in m.warnings)
+    good = legacy.load_legacy(container.open_skp(os.path.join(D, "legacy", "components.skp")))
+    assert not any("NOT placed" in w for w in good.warnings)
