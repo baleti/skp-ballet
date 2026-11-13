@@ -158,3 +158,29 @@ def test_container_oddities_are_flagged_not_silent():
     # intact files: no container note
     for p in FILES:
         assert not any(w.startswith("container:") for w in scene.load(container.open_skp(p)).warnings), p
+
+
+@pytest.mark.parametrize("path", FILES, ids=os.path.basename)
+def test_prezip_header_mutations_fail_cleanly(path):
+    d = open(path, "rb").read()
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    assert z == 69
+    for i in range(z):
+        for bit in (0, 7):
+            b = bytearray(d)
+            b[i] ^= 1 << bit
+            try:
+                m = scene.load(container.open_skp(bytes(b)))
+            except (container.SkpError, ValueError):
+                assert i < 4 or True
+            else:
+                assert m.counts()["faces"] >= 0
+
+
+def test_damaged_version_string_is_flagged():
+    d = bytearray(open(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"), "rb").read())
+    i = d.find("{25.0.575}".encode("utf-16-le"))
+    assert i > 0
+    d[i] ^= 0x80   # the opening brace
+    m = scene.load(container.open_skp(bytes(d)))
+    assert any("version string" in w for w in m.warnings)

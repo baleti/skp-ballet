@@ -61,6 +61,8 @@ def open_skp(src):
         sk = SkpFile(ver, zf)
         eocd = data.rfind(b"PK\x05\x06")
         sk.container_notes = []
+        if ver == "unknown":
+            sk.container_notes.append("version string in the file header is missing or damaged")
         if eocd >= 0 and len(data) > eocd + 22 + len(zf.comment):
             sk.container_notes.append("%d bytes after the end of the zip archive" % (len(data) - eocd - 22 - len(zf.comment)))
         if zf.comment:

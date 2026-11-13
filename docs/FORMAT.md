@@ -353,3 +353,11 @@ the 6-byte header (the only self-check: a truncated or padded stream fails it). 
 by zipfile on read and covers the stored bytes only, so a structurally damaged but re-zipped model.dat (duplicated or
 lengthened record, see tests/test_fuzz_model_dat.py) decodes without any error. Consequence for a future writer: there
 is no hidden checksum to keep in sync besides the ZIP CRCs, and also no way for a reader to detect such damage.
+
+## 2021+ pre-zip header (69 bytes, identical layout on 5 fixtures, 2026-11-13)
+
+`FF FE FF 0E` + UTF-16LE "SketchUp Model" (MFC-style counted string), `FF FE FF 0A` + UTF-16LE "{25.0.575}" (version),
+then `56 46 46 08 00 01 00 11 00` (constant) and 4 bytes that differ per file: not a crc32/adler32/md5/sha1 of the zip,
+the whole file or the members (looks like an id). The zip starts at offset 69. The reader checks the 4 magic bytes and
+finds `PK\x03\x04`; flipping any other header byte is accepted (45 of 69 single-bit flips on nesting_2021 changed
+nothing visible, 20 made the version "unknown", 4 were rejected). A missing version now warns.
