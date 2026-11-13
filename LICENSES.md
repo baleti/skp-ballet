@@ -12,3 +12,8 @@
 Not used: the SketchUp C SDK (proprietary Trimble API terms; redistribution and attribution
 conditions; no SDK bytes, headers or libraries are in this repo and none are needed).
 Format knowledge comes from public notes plus own inspection of files.
+
+Provenance note: `tests/data/legacy/sdk_saved_2019.skp` and `sdk_saved_2020.skp` come from the
+OpenSKP repo (MIT) and are described there as saved with the SketchUp SDK. They are small
+synthetic files with no SDK code in them; their provenance was not independently verified. If a
+rights holder objects, delete them and the two tests that name them.
