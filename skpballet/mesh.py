@@ -377,6 +377,13 @@ def _lin(c):
     return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
 
 
+def _check_coords(vals):
+    """A GLB with NaN/inf or float32-overflowing positions is invalid: refuse (corrupt input)."""
+    for v in vals:
+        if not (-1e30 < v < 1e30):   # also false for NaN
+            raise ValueError("geometry has non-finite or absurd coordinates (corrupt file?)")
+
+
 def write_glb(model, path, edges=True):
     seg = [] if edges else None
     import gc
@@ -392,6 +399,7 @@ def write_glb(model, path, edges=True):
             continue
         n = len(buf) // 3
         off = len(bin_)
+        _check_coords(buf)
         bin_ += struct.pack("<%df" % len(buf), *buf)
         xs, ys, zs = buf[0::3], buf[1::3], buf[2::3]
         views.append(dict(buffer=0, byteOffset=off, byteLength=len(buf) * 4, target=34962))
@@ -406,6 +414,7 @@ def write_glb(model, path, edges=True):
     if seg:
         n = len(seg) // 3
         off = len(bin_)
+        _check_coords(seg)
         bin_ += struct.pack("<%df" % len(seg), *seg)
         views.append(dict(buffer=0, byteOffset=off, byteLength=len(seg) * 4, target=34962))
         accs.append(dict(bufferView=len(views) - 1, componentType=5126, count=n, type="VEC3",
