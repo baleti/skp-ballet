@@ -306,5 +306,7 @@ public file has one; it sits before the entity lists), (2) bytes after the last 
 decoder reports INCOMPLETE. Over 235 test cuts (29 files, 1 KiB steps): 222 flagged, 2 rejected, 11 silent: cuts
 mostly inside the final settings tail (scenes, styles, thumbnail), which skp-ballet does not read, plus v3. The
 chair_and_table cut at 14336 of 30748 bytes (5 of 10 lists) has no TRUNCATED signal (its tail size is coincidentally
-normal) but the tree rules reject it, so it warns 'instances are NOT placed' and `--strict` exits 3 (item 98). That
-warning also fires on 3 intact fixtures that have unplaced instances (text labels, v3, v4), so it is not a clean truncation signal.
+normal) but the tree rules reject it, so it warns 'instances are NOT placed' and `--strict` exits 3 (item 98). The
+3 intact fixtures that trip `--strict` (text_arrows_2017, v3, v4) do so through INCOMPLETE ("5 of 8 objects", "0 of 5": object
+types the decoder does not know, e.g. text), not through NOT placed; they contain no instance classes. INCOMPLETE therefore means
+"not everything decoded", which is true for those files, but it is not proof of truncation.
