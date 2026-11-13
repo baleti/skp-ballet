@@ -210,7 +210,10 @@ def _load_any(skp):
 def _load(skp):
     model = Model()
     model.version = skp.version
-    top = parse_tlv(skp.model_dat)[0]
+    md = skp.model_dat
+    top = parse_tlv(md)[0]
+    if len(md) >= 6 and struct.unpack_from("<I", md, 2)[0] != len(md) - 6:   # holds on all public 2021+ fixtures
+        model.warnings.append("model.dat: top record length does not match the stream size (%d bytes after it): extra or damaged data" % (len(md) - 6 - struct.unpack_from("<I", md, 2)[0]))
     xml = {}
     for n in skp.names():
         m = re.match(r"materials/(.+)/material\.xml$", n)

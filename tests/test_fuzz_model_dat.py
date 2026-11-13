@@ -116,3 +116,15 @@ def test_model_dat_structural_mutations(path, seed, tmp_path):
         finally:
             signal.alarm(0)
     assert not bad, bad[:5]
+
+
+def test_padded_model_dat_is_warned_and_intact_ones_are_not():
+    import glob
+    class Fake(container.SkpFile):
+        model_dat = None
+    for path in FILES:
+        sk = container.open_skp(path)
+        assert not any("top record length" in w for w in scene.load(sk).warnings), path
+        f = Fake(sk.version, sk.zip)
+        f.__dict__["model_dat"] = sk.model_dat + b"\x00\x00"
+        assert any("top record length" in w for w in scene.load(f).warnings), path

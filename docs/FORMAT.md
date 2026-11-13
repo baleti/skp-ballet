@@ -343,3 +343,13 @@ Entity-collection (0x1388) children besides geometry, all found only in this fix
   dimension, start and end.
 The three layer names of the fixture (translated from Chinese: leader text, reference elements, dimension) match
 text / section+guide / dimension. skp-ballet lists them in `info` and does not draw them.
+
+## Integrity fields in 2021+ files (negative result, 2026-11-13)
+
+Looked for a checksum or length of model.dat in meta/meta.dat and inside model.dat itself (crc32, adler32, md5,
+sha1, sha256, plain length u32/u64, also md5/sha of every zip member against the 16-byte GUID-like field of meta.dat)
+on 3 fixtures: nothing matches. model.dat starts with tag 0x01F4 whose u32 length equals the rest of the file minus
+the 6-byte header (the only self-check: a truncated or padded stream fails it). The ZIP CRC-32 per member is checked
+by zipfile on read and covers the stored bytes only, so a structurally damaged but re-zipped model.dat (duplicated or
+lengthened record, see tests/test_fuzz_model_dat.py) decodes without any error. Consequence for a future writer: there
+is no hidden checksum to keep in sync besides the ZIP CRCs, and also no way for a reader to detect such damage.
