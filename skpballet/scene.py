@@ -235,7 +235,14 @@ def _load(skp):
         for e in l2.find(0x3A99):
           for l in e.find(0x3C8C):
             lid = _id(l.first(0x5DC))
-            model.layers[lid] = l.first(0x3C8D).text() if l.first(0x3C8D) else ""
+            nm = l.first(0x3C8D).text() if l.first(0x3C8D) else ""
+            if not nm:   # public fixtures keep the name only in 0x3C8F > 0x32CC as "Layer_<name>" (same as the zip member name)
+                for t, rec in _flat_tlv(l.first(0x3C8F).payload if l.first(0x3C8F) else b""):
+                    for t2, r2 in (_flat_tlv(rec) if t == 0x32C8 else ()):
+                        if t2 == 0x32CC:
+                            nm = r2.decode("utf-8", "replace")
+                            nm = nm[6:] if nm.startswith("Layer_") else nm
+            model.layers[lid] = nm
             fl = l.first(0x3C8E)
             if fl is not None and fl.uint() == 1:
                 model.layers_off.add(lid)

@@ -151,3 +151,13 @@ def test_unknown_entity_tag_is_warned_once():
     scene._entities(ent, scene.Definition(-1, "root"), m)
     assert [w for w in m.warnings if "0x13FF is NOT read" in w] == [m.warnings[0]]
     assert len(m.warnings) == 1
+
+
+def test_2021_layer_names_are_read():
+    from skpballet import container, scene
+    got = {n: sorted(scene.load(container.open_skp(os.path.join(DATA, n))).layers.values())
+           for n in ("arcs_2021.skp", "scene_without_camera_2021.skp", "annotation_layers_vff.skp")}
+    assert got["arcs_2021.skp"] == ["Layer0"]
+    assert got["scene_without_camera_2021.skp"] == ["Furniture", "Layer0"]
+    assert "Layer0" in got["annotation_layers_vff.skp"] and len(got["annotation_layers_vff.skp"]) == 4
+    assert all(got["annotation_layers_vff.skp"])
