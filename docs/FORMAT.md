@@ -290,3 +290,12 @@ and all edges are drawn. A fixture with one known hidden and one known soft edge
 ### 2021+ instance name (item 76, 2026-11-11)
 Instance node (0x1964) child 0x1965 holds the instance name as raw UTF-8 (empty when unnamed): nesting_2021 gives Inner, '' and Outer, the same
 names the legacy nesting fixtures give. Other children: 0x1966 13 f64 matrix, 0x1967 definition id (varint), 0x1968 16-byte guid.
+
+
+## Legacy truncation detection (negative result, 2026-11-13)
+
+Searched all 29 public legacy fixtures for a u32 equal to the file length (minus 0..63) in the
+first 4 KiB and in the last 64 bytes: no consistent field (the few hits sit at different offsets
+with different deltas per file, i.e. coincidences). File tails also differ per version. So a
+truncated legacy file cannot be detected from header or tail; skp-ballet warns on every legacy
+load instead.
