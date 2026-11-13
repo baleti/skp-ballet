@@ -36,3 +36,11 @@ def test_truncation_sweep(src, tmp_path):
         worst = max(worst, time.time() - t)
         assert rc in (0, 2), (n, rc)
     assert worst < 5
+
+
+def test_legacy_truncation_is_warned(tmp_path, capsys):
+    src = os.path.join(DATA, "legacy", "chair_and_table.skp")
+    f = str(tmp_path / "t.skp")
+    open(f, "wb").write(open(src, "rb").read()[:18432])
+    assert cli.main(["info", f]) == 0
+    assert "no known end marker" in capsys.readouterr().out

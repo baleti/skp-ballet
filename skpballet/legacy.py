@@ -464,6 +464,7 @@ def load_legacy(skp):
         m.root.instances = [dict(def_id=i, matrix=list(v), name=nm, id=None) for i, nm, v in ins]
         m.version = skp.version + " (legacy, experimental: definition tree)"
         m.warnings.append("legacy definition tree: instance-to-definition link inferred from slot order (experimental)")
+        m.warnings.append("legacy files have no known end marker: a truncated file can load with partial geometry and no error; compare with the source model")
         return m
     # face front material = archive slot of the material object (observed: faces 10, 11 -> Red, Blue); unknown slots stay unassigned
     slots = inf.get("face_matslots") or []
@@ -484,6 +485,7 @@ def load_legacy(skp):
         m.warnings.append("legacy file has components/groups but their lists do not fit the strict definition-tree rules: instances are NOT placed")
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
                       % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
+    m.warnings.append("legacy files have no known end marker: a truncated file can load with partial geometry and no error; compare with the source model")
     return m
 
 
