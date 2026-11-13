@@ -161,3 +161,10 @@ def test_2021_layer_names_are_read():
     assert got["scene_without_camera_2021.skp"] == ["Furniture", "Layer0"]
     assert "Layer0" in got["annotation_layers_vff.skp"] and len(got["annotation_layers_vff.skp"]) == 4
     assert all(got["annotation_layers_vff.skp"])
+
+
+def test_info_json_has_texts_and_annotations(capsys):
+    import json
+    assert cli.main(["info", "--json", os.path.join(DATA, "annotation_layers_vff.skp")]) == 0
+    d = json.loads(capsys.readouterr().out)
+    assert "Dot" in d["texts"] and d["annotations"].count("dimension") == 4 and "Layer0" in d["layer_names"]
