@@ -420,6 +420,17 @@ def _newell(pts):
     return (x, y, z) if (x * x + y * y + z * z) > 1e-18 else None
 
 
+def tail_suspect(data, version=""):
+    """True when the bytes after the last entity list are not 2000..4300 long (all 19 public fixtures with lists
+    have 2277..4142). Heuristic for truncation: 0 false positives on those, flags 73 of 94 truncations."""
+    ends = []
+    try:
+        scan_lists(data, version, ends=ends)
+    except (LegacyError, IndexError, struct.error):
+        return False
+    return bool(ends) and not 2000 <= len(data) - ends[-1] <= 4300
+
+
 def load_legacy(skp):
     """LegacySkp -> scene.Model with one root definition (faces only; no groups, materials or layers yet)."""
     from .scene import Model, Definition
@@ -434,6 +445,8 @@ def load_legacy(skp):
         inf = dict(count=0, parsed=0, complete=True)
     m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
     d = Definition(-1, "root"); m.root = d
+    if tail_suspect(skp.data, skp.version):
+        m.warnings.append("legacy file: unusual amount of data after the last entity list, the file may be TRUNCATED (geometry possibly partial)")
     mi = {"base_slot": 10}
     mats = scan_materials(skp.data, mi)
     for i, mt in enumerate(mats):

@@ -44,3 +44,15 @@ def test_legacy_truncation_is_warned(tmp_path, capsys):
     open(f, "wb").write(open(src, "rb").read()[:18432])
     assert cli.main(["info", f]) == 0
     assert "no known end marker" in capsys.readouterr().out
+
+
+def test_tail_heuristic_no_false_positive_and_catches_cut():
+    from skpballet import legacy
+    full = open(os.path.join(DATA, "legacy", "chair_and_table.skp"), "rb").read()
+    assert not legacy.tail_suspect(full, "17.0.1")
+    for p in glob.glob(os.path.join(DATA, "legacy", "*.skp")):
+        d = open(p, "rb").read()
+        if d[:4] == b"\xff\xfe\xff\x0e":
+            assert not legacy.tail_suspect(d, "17.0.1"), p
+    assert legacy.tail_suspect(full[:18432], "17.0.1")
+    assert legacy.tail_suspect(full[:28000], "17.0.1")
