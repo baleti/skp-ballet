@@ -34,7 +34,7 @@ Tests: `python3 -m pytest tests`. Licenses: LICENSES.md.
 2021+ files are zip containers: a truncated one is rejected. Legacy (2013-2020) files have no length field or end
 marker, so a truncated one can load with partial geometry. Every legacy load warns about this, and a heuristic (size of
 the data after the last entity list plus the usual file end bytes) adds "may be TRUNCATED": no false positives on the
-29 public legacy fixtures, 215 of 235 test truncations flagged by TRUNCATED or INCOMPLETE, 2 rejected, 18 silent (4 of them 2017+, the rest pre-2017 where nothing is calibrated). Use
+29 public legacy fixtures, 222 of 235 test truncations flagged by TRUNCATED or INCOMPLETE, 2 rejected, 11 silent (cuts after most data, in the file tail, and v3 which has no layer table). Use
 `skp-ballet info --strict FILE` (also on convert/cache) to exit with status 3 when a model may be partial
 (TRUNCATED, INCOMPLETE or instances NOT placed). Corrupted coordinates (NaN, overflow) are refused with exit 2.
 

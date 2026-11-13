@@ -89,7 +89,7 @@ def test_header_only_cut_of_every_2017plus_file_warns():
         if d[:4] != b"\xff\xfe\xff\x0e" or len(d) < 4000:
             continue
         sk = container.open_skp(d[:3072])
-        if sk.version.split(".")[0] in ("3", "4", "5", "13"):
+        if sk.version.split(".")[0] == "3":
             continue
         n += 1
         assert any("TRUNCATED" in w for w in scene.load(sk).warnings), p

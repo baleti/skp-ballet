@@ -467,7 +467,7 @@ def load_legacy(skp):
         nm, rgb, al = mt[:3]
         m.materials[i + 1] = dict(name=nm, rgb=rgb, alpha=al, **({"texture": mt[3]} if len(mt) > 3 else {}))
     lay = scan_layers(skp.data)
-    if not lay and _major(skp.version) >= 17:   # every complete 2017+ file has Layer0 (25 of 25 public files)
+    if not lay and _major(skp.version) >= 4:   # every complete file from v4 on has Layer0 (28 of 28 public files; v3 has none)
         m.warnings.append("legacy file: no layer table found, the file may be TRUNCATED (header only?)")
     for i, (nm, fl) in enumerate(lay):
         m.layers[i + 1] = nm
