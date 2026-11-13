@@ -214,15 +214,17 @@ def scan_faces(data, info=None, version=""):
     for base in range(1, 400):   # absolute slot base is unknown: take the first that parses most objects
         r = _R(data, m.start(), nomask=_major(version) <= 13); r.slot = base
         objs = []
+        why = None
         while len(objs) < count:
             try:
                 objs.append(r.obj())
-            except (LegacyError, IndexError, struct.error):
+            except (LegacyError, IndexError, struct.error) as e:
+                why = str(e)
                 break
         if best is None or sum(o is not None for o in objs) > sum(o is not None for o in best):
-            best = objs
+            best, best_why = objs, why
     if info is not None:
-        info.update(count=count if count < 1 << 30 else None, parsed=len(best),
+        info.update(stopped=best_why, count=count if count < 1 << 30 else None, parsed=len(best),
                     complete=count < 1 << 30 and len(best) == count and all(o is not None for o in best[:_last(best)]))
     faces = [f for f in best if f is not None and f[0] == "f"]
     out = []
@@ -514,7 +516,7 @@ def load_legacy(skp):
     if b"CComponentInstance" in skp.data or b"CGroup" in skp.data:
         m.warnings.append("legacy file has components/groups but their lists do not fit the strict definition-tree rules: instances are NOT placed")
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
-                      % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE"))
+                      % (inf.get("parsed"), inf.get("count"), "" if inf.get("complete") else ", INCOMPLETE" + (" (stopped: %s)" % inf["stopped"] if inf.get("stopped") else "")))
     m.warnings.append("legacy files have no known end marker: a truncated file can load with partial geometry and no error; compare with the source model")
     return m
 

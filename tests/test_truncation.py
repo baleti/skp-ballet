@@ -94,3 +94,9 @@ def test_header_only_cut_of_every_2017plus_file_warns():
         n += 1
         assert any("TRUNCATED" in w for w in scene.load(sk).warnings), p
     assert n >= 20
+
+
+def test_incomplete_warning_names_the_stop_reason():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(DATA, "legacy", "legacy_text_arrows_2017.skp")))
+    assert any("unsupported class CText" in w for w in m.warnings)
