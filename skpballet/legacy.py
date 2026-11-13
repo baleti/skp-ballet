@@ -422,13 +422,18 @@ def _newell(pts):
 
 def tail_suspect(data, version=""):
     """True when the bytes after the last entity list are not 2000..4300 long (all 19 public fixtures with lists
-    have 2277..4142). Heuristic for truncation: 0 false positives on those, flags 73 of 94 truncations."""
+    have 2277..4142) or the file does not end in the usual zero/flag bytes. Heuristic for truncation: 0 false positives
+    on those 19, flags 91 of 94 truncation cuts."""
     ends = []
     try:
         scan_lists(data, version, ends=ends)
     except (LegacyError, IndexError, struct.error):
         return False
-    return bool(ends) and not 2000 <= len(data) - ends[-1] <= 4300
+    if not ends:
+        return False
+    end_ok = (data[-8:] == b"\x00" * 8 or data[-4:] == b"\x01\x00\x00\x00" or data[-5:] == b"\x01\x00\x00\x00\x00"
+              or (data[-1:] == b"\x00" and data[-12:-1].count(0) >= 9))   # all public files end in zero padding / a 1 flag
+    return not (2000 <= len(data) - ends[-1] <= 4300 and end_ok)
 
 
 def load_legacy(skp):

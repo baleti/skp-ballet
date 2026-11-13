@@ -56,3 +56,14 @@ def test_tail_heuristic_no_false_positive_and_catches_cut():
             assert not legacy.tail_suspect(d, "17.0.1"), p
     assert legacy.tail_suspect(full[:18432], "17.0.1")
     assert legacy.tail_suspect(full[:28000], "17.0.1")
+
+
+def test_strict_exit_status(tmp_path):
+    src = os.path.join(DATA, "legacy", "chair_and_table.skp")
+    full = open(src, "rb").read()
+    f = str(tmp_path / "t.skp")
+    open(f, "wb").write(full)
+    assert cli.main(["info", "--strict", f]) == 0
+    open(f, "wb").write(full[:18432])
+    assert cli.main(["info", "--strict", f]) == 3
+    assert cli.main(["info", f]) == 0

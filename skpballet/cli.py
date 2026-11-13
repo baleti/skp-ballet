@@ -118,6 +118,7 @@ def main(argv=None):
         rest = a[1:]
     ap = argparse.ArgumentParser(prog="skp-ballet " + cmd)
     ap.add_argument("file")
+    ap.add_argument("--strict", action="store_true", help="exit 3 if the model may be truncated or partial (legacy files)")
     if cmd == "info":
         ap.add_argument("--json", action="store_true")
         ap.add_argument("--layers", action="store_true", help="one line per layer: id, name, [off] if flag 0x3C8E is 1 (unverified)")
@@ -149,6 +150,9 @@ def main(argv=None):
             info_json(ns.file)
             return 0
         m = info(ns.file)
+        if ns.strict and any("TRUNCATED" in w or "INCOMPLETE" in w or "NOT placed" in w for w in m.warnings):
+            print("skp-ballet: --strict: model may be partial, see warnings above", file=sys.stderr)
+            return 3
         if cmd == "info":
             return 0
         if cmd == "cache":
