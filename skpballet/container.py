@@ -65,6 +65,12 @@ def open_skp(src):
             sk.container_notes.append("version string in the file header is missing or damaged")
         if eocd >= 0 and len(data) > eocd + 22 + len(zf.comment):
             sk.container_notes.append("%d bytes after the end of the zip archive" % (len(data) - eocd - 22 - len(zf.comment)))
+        try:
+            mv = re.search(rb"\x75\x00\x08\x00\x00\x00([0-9]+\.[0-9]+\.[0-9]+)", zf.read("meta/meta.dat"))
+        except (KeyError, zipfile.BadZipFile, zlib.error, OSError, EOFError, NotImplementedError):
+            mv = None
+        if mv and ver != "unknown" and mv.group(1).decode() != ver:
+            sk.container_notes.append("header version %s differs from meta/meta.dat version %s" % (ver, mv.group(1).decode()))
         if zf.comment:
             sk.container_notes.append("zip comment present (%d bytes)" % len(zf.comment))
         return sk

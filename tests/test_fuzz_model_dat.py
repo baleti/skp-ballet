@@ -184,3 +184,11 @@ def test_damaged_version_string_is_flagged():
     d[i] ^= 0x80   # the opening brace
     m = scene.load(container.open_skp(bytes(d)))
     assert any("version string" in w for w in m.warnings)
+
+
+def test_header_vs_meta_version_mismatch_is_flagged():
+    d = bytearray(open(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"), "rb").read())
+    i = d.find("{25.0.575}".encode("utf-16-le")) + 2 * 6   # the '5' of 575? change a digit of the header version only
+    d[i:i + 2] = "6".encode("utf-16-le")
+    m = scene.load(container.open_skp(bytes(d)))
+    assert any("differs from meta/meta.dat" in w for w in m.warnings), m.warnings
