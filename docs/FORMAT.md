@@ -299,3 +299,10 @@ first 4 KiB and in the last 64 bytes: no consistent field (the few hits sit at d
 with different deltas per file, i.e. coincidences). File tails also differ per version. So a
 truncated legacy file cannot be detected from header or tail; skp-ballet warns on every legacy
 load instead.
+
+Truncation signals in use (2026-11-13, legacy files): (1) no layer table found (from v4 on; every intact
+public file has one; it sits before the entity lists), (2) bytes after the last entity list outside 2000..4300
+(2017+ only), (3) file does not end in zero padding or a 1 flag when no geometry decoded, (4) the first-list
+decoder reports INCOMPLETE. Over 235 test cuts (29 files, 1 KiB steps): 222 flagged, 2 rejected, 11 silent: cuts
+inside the final settings tail after all geometry and layers, and v3. A cut there loses only the tail
+(scenes, styles, thumbnail) which skp-ballet does not read, so the exported geometry is not affected by it.
