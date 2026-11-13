@@ -304,5 +304,5 @@ Truncation signals in use (2026-11-13, legacy files): (1) no layer table found (
 public file has one; it sits before the entity lists), (2) bytes after the last entity list outside 2000..4300
 (2017+ only), (3) file does not end in zero padding or a 1 flag when no geometry decoded, (4) the first-list
 decoder reports INCOMPLETE. Over 235 test cuts (29 files, 1 KiB steps): 222 flagged, 2 rejected, 11 silent: cuts
-inside the final settings tail after all geometry and layers, and v3. A cut there loses only the tail
-(scenes, styles, thumbnail) which skp-ballet does not read, so the exported geometry is not affected by it.
+mostly inside the final settings tail (scenes, styles, thumbnail), which skp-ballet does not read, plus v3. One silent
+cut is NOT harmless: chair_and_table cut at 14336 of 30748 bytes loads 7 faces and no signal fires (item 98).
