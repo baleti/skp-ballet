@@ -38,3 +38,32 @@ def test_refuses_output_over_input(tmp_path, capsys):
     assert cli.main(["convert", f, link]) == 2
     assert cli.main(["convert", f, str(tmp_path / "x.SKP")]) == 2
     assert sha(f) == before
+
+
+def test_source_has_no_input_write_modes():
+    """Only output writers (cache.py, mesh.py) may open files for writing."""
+    import re
+    root = os.path.join(os.path.dirname(__file__), "..", "skpballet")
+    bad = []
+    for p in glob.glob(os.path.join(root, "*.py")):
+        name = os.path.basename(p)
+        txt = open(p, encoding="utf-8").read()
+        if re.search(r"open\([^)]*[\"'](?:r\+|a|ab|rb\+|w\+)[\"']", txt):
+            bad.append(name)
+        if name not in ("cache.py", "mesh.py") and re.search(r"open\([^)]*[\"']w", txt):
+            bad.append(name)
+    assert not bad, bad
+
+
+@pytest.mark.parametrize("kind", ["missing", "empty", "dir", "garbage"])
+def test_bad_inputs_fail_cleanly(kind, tmp_path):
+    p = tmp_path / "x.skp"
+    if kind == "empty":
+        p.write_bytes(b"")
+    elif kind == "dir":
+        p.mkdir()
+    elif kind == "garbage":
+        p.write_bytes(os.urandom(4096))
+    rc = cli.main(["info", str(p)])
+    assert rc in (1, 2)
+    assert not p.is_file() or p.stat().st_size in (0, 4096)
