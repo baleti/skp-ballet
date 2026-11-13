@@ -141,3 +141,13 @@ def test_2021_annotations_decoded():
     assert sp["point"] == [1.0, 2.0, 3.0] and abs(sum(x * x for x in sp["normal"]) - 1) < 1e-12
     dm = next(a for a in ann if a["kind"] == "dimension")
     assert dm["start"] == [0.0, 0.0, 0.0] and dm["end"] == [10.0, 0.0, 0.0]
+
+
+def test_unknown_entity_tag_is_warned_once():
+    from skpballet import scene, tlv
+    unk = lambda: tlv.Node(0x13FF, b"\x01\x02", [])
+    ent = tlv.Node(0x1388, b"", [unk(), unk()])
+    m = scene.Model()
+    scene._entities(ent, scene.Definition(-1, "root"), m)
+    assert [w for w in m.warnings if "0x13FF is NOT read" in w] == [m.warnings[0]]
+    assert len(m.warnings) == 1
