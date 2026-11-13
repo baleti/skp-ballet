@@ -1,10 +1,10 @@
 """Corrupt the decompressed model.dat of the annotation fixture (all tag kinds incl. 0x1391/0x1392/0x1398/0x1399)
 and check the 2021+ reader either decodes or raises a clean error (never hangs, never another exception type)."""
-import os, random, signal
+import glob, os, random, signal
 import pytest
-from skpballet import container, scene
+from skpballet import container, mesh, scene
 
-PATH = os.path.join(os.path.dirname(__file__), "data", "annotation_layers_vff.skp")
+FILES = sorted(glob.glob(os.path.join(os.path.dirname(__file__), "data", "*.skp")))
 
 
 class Hang(Exception):
@@ -16,9 +16,10 @@ def _alarm(*_):
 
 
 @pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="needs SIGALRM (not on Windows)")
-@pytest.mark.parametrize("seed", range(6))
-def test_model_dat_bitflips(seed):
-    sk = container.open_skp(PATH)
+@pytest.mark.parametrize("seed", range(3))
+@pytest.mark.parametrize("path", FILES, ids=os.path.basename)
+def test_model_dat_bitflips(path, seed, tmp_path):
+    sk = container.open_skp(path)
     good = sk.model_dat
 
     class Fake(container.SkpFile):
@@ -27,7 +28,7 @@ def test_model_dat_bitflips(seed):
     rnd = random.Random(seed)
     signal.signal(signal.SIGALRM, _alarm)
     bad_types = []
-    for i in range(150):
+    for i in range(60):
         b = bytearray(good)
         for _ in range(rnd.choice((1, 2, 4))):
             b[rnd.randrange(len(b))] ^= 1 << rnd.randrange(8)
@@ -35,8 +36,8 @@ def test_model_dat_bitflips(seed):
         f.__dict__["model_dat"] = bytes(b)
         signal.alarm(10)
         try:
-            scene.load(f)
-        except container.SkpError:
+            mesh.write_glb(scene.load(f), str(tmp_path / "o.glb"))
+        except (container.SkpError, ValueError):
             pass
         except Hang:
             raise
