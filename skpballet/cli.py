@@ -50,6 +50,9 @@ def info(path):
     txt = [t["text"] for d in list(m.defs.values()) + [m.root] if d for t in d.texts]
     if txt:
         print("texts:     %d (not in the GLB): %s" % (len(txt), "; ".join(repr(t) for t in txt[:8])))
+    ann = [a["kind"] for d in list(m.defs.values()) + [m.root] if d for a in d.annotations]
+    if ann:
+        print("annotations: " + ", ".join("%d %s" % (ann.count(k), k) for k in sorted(set(ann))) + " (not in the GLB; kinds inferred, unverified)")
     print("layers:    " + ", ".join(sorted(m.layers.values())[:20]))
     print("materials: " + ", ".join(sorted(x["name"] for x in m.materials.values())[:20]))
     for w in m.warnings[:5]:

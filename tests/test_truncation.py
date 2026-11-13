@@ -114,7 +114,10 @@ def test_unread_object_classes_are_reported():
 def test_2021_unread_entity_collections_reported():
     from skpballet import container, scene
     m = scene.load(container.open_skp(os.path.join(DATA, "annotation_layers_vff.skp")))
-    assert any("0x1391 is NOT read" in w for w in m.warnings)
+    assert not any("NOT read" in w for w in m.warnings)   # 0x1391/0x1392/0x1398/0x1399 are decoded now
+    # an unknown collection tag must still be reported
+    from skpballet import scene as sc
+    assert 0x1391 in sc._KNOWN_ENT_TAGS and 0x13FF not in sc._KNOWN_ENT_TAGS
     for n in ("arcs_2021.skp", "nesting_2021.skp", "scene_without_camera_2021.skp", "instance_scale_term_2021.skp"):
         m = scene.load(container.open_skp(os.path.join(DATA, n)))
         assert not any("NOT read" in w for w in m.warnings), n
@@ -126,3 +129,15 @@ def test_2021_screen_texts_decoded():
     texts = sorted(t["text"] for d in list(m.defs.values()) + [m.root] for t in d.texts)
     assert texts == ["Closed arrow", "Dot", "Nested screen note", "Open arrow"]
     assert not any("0x1398" in w for w in m.warnings)
+
+
+def test_2021_annotations_decoded():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(DATA, "annotation_layers_vff.skp")))
+    ann = [a for d in list(m.defs.values()) + [m.root] for a in d.annotations]
+    kinds = sorted(a["kind"] for a in ann)
+    assert kinds == ["dimension"] * 4 + ["guide point"] * 4 + ["section plane"] * 4
+    sp = next(a for a in ann if a["kind"] == "section plane")
+    assert sp["point"] == [1.0, 2.0, 3.0] and abs(sum(x * x for x in sp["normal"]) - 1) < 1e-12
+    dm = next(a for a in ann if a["kind"] == "dimension")
+    assert dm["start"] == [0.0, 0.0, 0.0] and dm["end"] == [10.0, 0.0, 0.0]

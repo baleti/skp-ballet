@@ -36,6 +36,7 @@ class Definition:
         self.faces = []      # dict(id, loops=[[vid..]], mat, normal)
         self.instances = []  # dict(def_id, matrix(13), name, hidden)
         self.is_group = False
+        self.annotations = []  # dict(kind, ...): section planes, guide points, linear dimensions (UNVERIFIED kinds, see FORMAT.md)
         self.texts = []      # dict(text, x, y): screen-text records (tag 0x1398 > 0x55F0), position fields UNVERIFIED
 
 
@@ -60,7 +61,7 @@ class Model:
 
 # child tags of an entity collection (0x1388): read above, or present in every public fixture and carrying no geometry
 # as far as known (0x138E 0x139B 0x139F 0x13A0 flags/extents?; 0x1397 grouping of arc edges: both UNVERIFIED)
-_KNOWN_ENT_TAGS = {0x1398, 0x7D0, 0x1389, 0x138A, 0x138B, 0x138C, 0x138D, 0x138E, 0x1397, 0x139B, 0x139E, 0x139F, 0x13A0}
+_KNOWN_ENT_TAGS = {0x1391, 0x1392, 0x1399, 0x1398, 0x7D0, 0x1389, 0x138A, 0x138B, 0x138C, 0x138D, 0x138E, 0x1397, 0x139B, 0x139E, 0x139F, 0x13A0}
 
 
 def _flat_tlv(b):
@@ -86,11 +87,45 @@ def _texts(payload, d):
         d.texts.append(dict(text=s.decode("utf-8", "replace"), x=xy[0], y=xy[1]))
 
 
+def _f64(node):
+    return list(struct.unpack("<%dd" % (len(node.payload) // 8), node.payload)) if node is not None and len(node.payload) % 8 == 0 else None
+
+
+def _annotations(c, d):
+    """Kinds inferred from payload shape and the layer names of annotation_layers_vff (text / reference / dimension):
+    0x1391>0x4269 0x426A = point(3) + unit normal(3) + 2 f64 -> section plane; 0x1392>0x426C 0x426D = point -> guide
+    point; 0x1399>0x5BCC 0x5BCD/0x5BCE>0x5208>0x520A = point each -> linear dimension (start, end). All UNVERIFIED."""
+    if c.tag == 0x1391:
+        for x in c.find(0x4269):
+            v = _f64(x.first(0x426A))
+            if v and len(v) == 8:
+                d.annotations.append(dict(kind="section plane", point=v[:3], normal=v[3:6]))
+    elif c.tag == 0x1392:
+        for x in c.find(0x426C):
+            v = _f64(x.first(0x426D))
+            if v and len(v) == 3:
+                d.annotations.append(dict(kind="guide point", point=v))
+    elif c.tag == 0x1399:
+        for x in _flat_tlv(c.payload):
+            if x[0] != 0x5BCC:
+                continue
+            pts = []
+            for t, rec in _flat_tlv(x[1]):
+                if t in (0x5BCD, 0x5BCE):
+                    for t2, r2 in _flat_tlv(rec):
+                        for t3, r3 in _flat_tlv(r2) if t2 == 0x5208 else ():
+                            if t3 == 0x520A and len(r3) == 24:
+                                pts.append(list(struct.unpack("<3d", r3)))
+            if len(pts) == 2:
+                d.annotations.append(dict(kind="dimension", start=pts[0], end=pts[1]))
+
+
 def _entities(ent, d, model):
     """ent: a 0x1388 node (entity collection)."""
     for c in ent.children:
         if c.tag == 0x1398:
             _texts(c.payload, d)
+        _annotations(c, d)
         if c.tag not in _KNOWN_ENT_TAGS and (c.children or c.payload):
             seen = model.__dict__.setdefault("_unread_tags", set())
             if c.tag not in seen:

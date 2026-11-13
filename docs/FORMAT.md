@@ -330,3 +330,16 @@ parser; other readers = handled by a separate scanner; none = not read at all.
 | CConstructionLine, CConstructionPoint | 2, 1 | entity-list decoder (skipped by length, not exported) |
 | CText | 1 (text_arrows_2017) | none: decoding stops there (INCOMPLETE) |
 | CImage | 1 (image.skp) | none inside entity lists; check image.skp stops cleanly |
+
+## 2021+ annotation records (annotation_layers_vff.skp, 2026-11-13; kinds are inferred, not verified)
+
+Entity-collection (0x1388) children besides geometry, all found only in this fixture:
+- 0x1398: flat TLV of 0x55F0 records = screen text: 0x55F1 UTF-8 string, 0x55F2/0x55F3 f64 pair (0.23, 0.66: screen
+  fractions?), 0x55F5 / 0x55F7 3 x f64. Strings: "Nested screen note", "Dot", "Closed arrow", "Open arrow".
+- 0x1391 > 0x4269 > 0x426A (64 bytes): point (1,2,3), unit normal (3,4,5)/|..|, 0, 7.07 (= |(3,4,5)|, plane offset?) =
+  section plane.
+- 0x1392 > 0x426C > 0x426D (24 bytes): point (1,2,3) / (1,2,4); 0x426E zero vector = guide point?
+- 0x1399 flat TLV of 0x5BCC records, each with two 0x5BCD/0x5BCE > 0x5208 > 0x520A points (0,0,0) and (10,0,0) = linear
+  dimension, start and end.
+The three layer names of the fixture (translated from Chinese: leader text, reference elements, dimension) match
+text / section+guide / dimension. skp-ballet lists them in `info` and does not draw them.
