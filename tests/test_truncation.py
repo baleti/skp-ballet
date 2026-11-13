@@ -1,0 +1,38 @@
+"""Truncated files must fail or degrade quickly, never hang or crash with a non-ValueError/OSError."""
+import glob, os, signal, time
+import pytest
+from skpballet import cli
+
+DATA = os.path.join(os.path.dirname(__file__), "data")
+FILES = sorted(glob.glob(os.path.join(DATA, "*.skp")) + glob.glob(os.path.join(DATA, "legacy", "*.skp")))
+
+
+class Hang(Exception):
+    pass
+
+
+def _alarm(*_):
+    raise Hang()
+
+
+@pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="needs SIGALRM (not on Windows)")
+@pytest.mark.parametrize("src", FILES, ids=os.path.basename)
+def test_truncation_sweep(src, tmp_path):
+    data = open(src, "rb").read()
+    cuts = sorted(set(list(range(0, len(data), 1024)) + [1, 16, 64, len(data) - 1]))
+    f = str(tmp_path / "t.skp")
+    signal.signal(signal.SIGALRM, _alarm)
+    worst = 0.0
+    for n in cuts:
+        if n >= len(data):
+            continue
+        open(f, "wb").write(data[:n])
+        signal.alarm(10)
+        t = time.time()
+        try:
+            rc = cli.main(["convert", f, str(tmp_path / "o.glb")])
+        finally:
+            signal.alarm(0)
+        worst = max(worst, time.time() - t)
+        assert rc in (0, 2), (n, rc)
+    assert worst < 5
