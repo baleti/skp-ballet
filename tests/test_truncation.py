@@ -100,3 +100,12 @@ def test_incomplete_warning_names_the_stop_reason():
     from skpballet import container, scene
     m = scene.load(container.open_skp(os.path.join(DATA, "legacy", "legacy_text_arrows_2017.skp")))
     assert any("unsupported class CText" in w for w in m.warnings)
+
+
+def test_unread_object_classes_are_reported():
+    from skpballet import container, scene
+    for name, cls in (("image.skp", "CImage"), ("legacy_text_arrows_2017.skp", "CText")):
+        m = scene.load(container.open_skp(os.path.join(DATA, "legacy", name)))
+        assert any("NOT read" in w and cls in w for w in m.warnings), name
+    m = scene.load(container.open_skp(os.path.join(DATA, "legacy", "chair_and_table.skp")))
+    assert not any("NOT read" in w for w in m.warnings)

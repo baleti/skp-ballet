@@ -310,3 +310,23 @@ normal) but the tree rules reject it, so it warns 'instances are NOT placed' and
 3 intact fixtures that trip `--strict` (text_arrows_2017, v3, v4) do so through INCOMPLETE ("5 of 8 objects", "0 of 5": object
 types the decoder does not know, e.g. text), not through NOT placed; they contain no instance classes. INCOMPLETE therefore means
 "not everything decoded", which is true for those files, but it is not proof of truncation.
+
+## Legacy class coverage on the 29 public fixtures (2026-11-13)
+
+Classes declared per file count (files containing the class). Entity-list decoder (S) = handled inside the first-list
+parser; other readers = handled by a separate scanner; none = not read at all.
+
+| Class | Files | Handled by |
+|---|---|---|
+| CVersionMap, CSkFont, CCamera, CSkpStyle, CCustomLineStyle, CViewPage | 29, 29, 28, 26, 7, 2 | none (settings, scenes, styles) |
+| CLayer | 29 | scan_layers (names, flag unverified) |
+| CAttributeContainer, CAttributeNamed | 26 | entity-list decoder (skipped content) |
+| CVertex, CEdge, CEdgeUse, CLoop, CFace | 24 | entity-list decoder |
+| CMaterial, CDib | 15, 6 | scan_materials (colour, alpha, embedded PNG) |
+| CComponentDefinition | 10 | legacy_tree trailer names |
+| CComponentInstance, CGroup | 9, 7 | entity-list decoder + legacy_tree |
+| CArcCurve, CCurve | 5, 2 | entity-list decoder (arcs as edges) |
+| CFaceTextureCoords | 3 | entity-list decoder (UV not exported) |
+| CConstructionLine, CConstructionPoint | 2, 1 | entity-list decoder (skipped by length, not exported) |
+| CText | 1 (text_arrows_2017) | none: decoding stops there (INCOMPLETE) |
+| CImage | 1 (image.skp) | none inside entity lists; check image.skp stops cleanly |

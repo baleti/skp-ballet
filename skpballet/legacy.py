@@ -447,6 +447,15 @@ def tail_suspect(data, version=""):
     return not (2000 <= len(data) - ends[-1] <= 4300 and end_ok)
 
 
+_DROPPED = ("CText", "CImage", "CDimension", "CDimensionLinear", "CDimensionRadial", "CSectionPlane", "CViewPage")
+
+
+def dropped_classes(data):
+    """Declared object classes whose content skp-ballet does not read at all (they vanish from the model silently)."""
+    found = {m.group(1).decode() for m in re.finditer(rb"\xff\xff.\x00.\x00(C[A-Za-z]{2,38})", data)}
+    return sorted(found & set(_DROPPED) - {"CViewPage"})   # scenes are expected to be unread
+
+
 def load_legacy(skp):
     """LegacySkp -> scene.Model with one root definition (faces only; no groups, materials or layers yet)."""
     from .scene import Model, Definition
@@ -463,6 +472,8 @@ def load_legacy(skp):
     d = Definition(-1, "root"); m.root = d
     if tail_suspect(skp.data, skp.version) or (not faces and _major(skp.version) >= 17 and not _end_ok(skp.data)):
         m.warnings.append("legacy file: unusual amount of data after the last entity list, the file may be TRUNCATED (geometry possibly partial)")
+    if dropped_classes(skp.data):
+        m.warnings.append("legacy file contains objects that are NOT read and not shown: " + ", ".join(dropped_classes(skp.data)))
     mi = {"base_slot": 10}
     mats = scan_materials(skp.data, mi)
     for i, mt in enumerate(mats):
