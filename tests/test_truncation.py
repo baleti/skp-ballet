@@ -79,3 +79,18 @@ def test_real_versions_no_false_truncation_warning_and_cut_empty_model_warns():
     d = open(os.path.join(DATA, "legacy", "chair_and_table.skp"), "rb").read()[:2048]
     m = scene.load(container.open_skp(d))   # cut before any geometry: used to look like an empty model
     assert any("TRUNCATED" in w for w in m.warnings)
+
+
+def test_header_only_cut_of_every_2017plus_file_warns():
+    from skpballet import container, scene
+    n = 0
+    for p in glob.glob(os.path.join(DATA, "legacy", "*.skp")):
+        d = open(p, "rb").read()
+        if d[:4] != b"\xff\xfe\xff\x0e" or len(d) < 4000:
+            continue
+        sk = container.open_skp(d[:3072])
+        if sk.version.split(".")[0] in ("3", "4", "5", "13"):
+            continue
+        n += 1
+        assert any("TRUNCATED" in w for w in scene.load(sk).warnings), p
+    assert n >= 20
