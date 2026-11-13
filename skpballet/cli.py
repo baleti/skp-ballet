@@ -47,6 +47,9 @@ def info(path):
     top = sorted(m.defs.values(), key=lambda d: -len(d.faces))[:10]
     for d in top:
         print("  %-9s %-30s faces=%d edges=%d instances=%d" % ("group" if d.is_group else "component", d.name or "<unnamed %s>" % d.id, len(d.faces), len(d.edges), len(d.instances)))
+    txt = [t["text"] for d in list(m.defs.values()) + [m.root] if d for t in d.texts]
+    if txt:
+        print("texts:     %d (not in the GLB): %s" % (len(txt), "; ".join(repr(t) for t in txt[:8])))
     print("layers:    " + ", ".join(sorted(m.layers.values())[:20]))
     print("materials: " + ", ".join(sorted(x["name"] for x in m.materials.values())[:20]))
     for w in m.warnings[:5]:

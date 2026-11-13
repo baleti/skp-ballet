@@ -118,3 +118,11 @@ def test_2021_unread_entity_collections_reported():
     for n in ("arcs_2021.skp", "nesting_2021.skp", "scene_without_camera_2021.skp", "instance_scale_term_2021.skp"):
         m = scene.load(container.open_skp(os.path.join(DATA, n)))
         assert not any("NOT read" in w for w in m.warnings), n
+
+
+def test_2021_screen_texts_decoded():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(DATA, "annotation_layers_vff.skp")))
+    texts = sorted(t["text"] for d in list(m.defs.values()) + [m.root] for t in d.texts)
+    assert texts == ["Closed arrow", "Dot", "Nested screen note", "Open arrow"]
+    assert not any("0x1398" in w for w in m.warnings)

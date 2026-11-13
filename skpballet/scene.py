@@ -36,6 +36,7 @@ class Definition:
         self.faces = []      # dict(id, loops=[[vid..]], mat, normal)
         self.instances = []  # dict(def_id, matrix(13), name, hidden)
         self.is_group = False
+        self.texts = []      # dict(text, x, y): screen-text records (tag 0x1398 > 0x55F0), position fields UNVERIFIED
 
 
 class Model:
@@ -59,12 +60,37 @@ class Model:
 
 # child tags of an entity collection (0x1388): read above, or present in every public fixture and carrying no geometry
 # as far as known (0x138E 0x139B 0x139F 0x13A0 flags/extents?; 0x1397 grouping of arc edges: both UNVERIFIED)
-_KNOWN_ENT_TAGS = {0x7D0, 0x1389, 0x138A, 0x138B, 0x138C, 0x138D, 0x138E, 0x1397, 0x139B, 0x139E, 0x139F, 0x13A0}
+_KNOWN_ENT_TAGS = {0x1398, 0x7D0, 0x1389, 0x138A, 0x138B, 0x138C, 0x138D, 0x138E, 0x1397, 0x139B, 0x139E, 0x139F, 0x13A0}
+
+
+def _flat_tlv(b):
+    p = 0
+    while p + 6 <= len(b):
+        t, l = struct.unpack_from("<HI", b, p)
+        if p + 6 + l > len(b):
+            return
+        yield t, b[p + 6:p + 6 + l]
+        p += 6 + l
+
+
+def _texts(payload, d):
+    """0x1398 payload = flat TLV of 0x55F0 records: 0x55F1 UTF-8 string, 0x55F2/0x55F3 f64 (screen position?)."""
+    for t, rec in _flat_tlv(payload):
+        if t != 0x55F0:
+            continue
+        sub = dict(_flat_tlv(rec))
+        s = sub.get(0x55F1)
+        if s is None:
+            continue
+        xy = [struct.unpack("<d", sub[k])[0] if len(sub.get(k, b"")) == 8 else None for k in (0x55F2, 0x55F3)]
+        d.texts.append(dict(text=s.decode("utf-8", "replace"), x=xy[0], y=xy[1]))
 
 
 def _entities(ent, d, model):
     """ent: a 0x1388 node (entity collection)."""
     for c in ent.children:
+        if c.tag == 0x1398:
+            _texts(c.payload, d)
         if c.tag not in _KNOWN_ENT_TAGS and (c.children or c.payload):
             seen = model.__dict__.setdefault("_unread_tags", set())
             if c.tag not in seen:
