@@ -109,3 +109,12 @@ def test_unread_object_classes_are_reported():
         assert any("NOT read" in w and cls in w for w in m.warnings), name
     m = scene.load(container.open_skp(os.path.join(DATA, "legacy", "chair_and_table.skp")))
     assert not any("NOT read" in w for w in m.warnings)
+
+
+def test_2021_unread_entity_collections_reported():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(DATA, "annotation_layers_vff.skp")))
+    assert any("0x1391 is NOT read" in w for w in m.warnings)
+    for n in ("arcs_2021.skp", "nesting_2021.skp", "scene_without_camera_2021.skp", "instance_scale_term_2021.skp"):
+        m = scene.load(container.open_skp(os.path.join(DATA, n)))
+        assert not any("NOT read" in w for w in m.warnings), n

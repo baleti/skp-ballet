@@ -57,9 +57,19 @@ class Model:
             materials=len(self.materials), layers=len(self.layers))
 
 
+# child tags of an entity collection (0x1388): read above, or present in every public fixture and carrying no geometry
+# as far as known (0x138E 0x139B 0x139F 0x13A0 flags/extents?; 0x1397 grouping of arc edges: both UNVERIFIED)
+_KNOWN_ENT_TAGS = {0x7D0, 0x1389, 0x138A, 0x138B, 0x138C, 0x138D, 0x138E, 0x1397, 0x139B, 0x139E, 0x139F, 0x13A0}
+
+
 def _entities(ent, d, model):
     """ent: a 0x1388 node (entity collection)."""
     for c in ent.children:
+        if c.tag not in _KNOWN_ENT_TAGS and (c.children or c.payload):
+            seen = model.__dict__.setdefault("_unread_tags", set())
+            if c.tag not in seen:
+                seen.add(c.tag)
+                model.warnings.append("entity collection 0x%X is NOT read (annotations or other objects?): its content is not in the model" % c.tag)
         if c.tag == 0x1389:
             for v in c.find(0x9C4):
                 co = v.first(0x9C5)
