@@ -29,6 +29,15 @@ percent of faces off by more than 0.1 percent). See docs/FORMAT.md.
 The viewer loads three.js from `../rvt-ballet/web/vendor` or `$SKP_BALLET_VENDOR`.
 Tests: `python3 -m pytest tests`. Licenses: LICENSES.md.
 
+## Truncated or partial files
+
+2021+ files are zip containers: a truncated one is rejected. Legacy (2013-2020) files have no length field or end
+marker, so a truncated one can load with partial geometry. Every legacy load warns about this, and a heuristic (size of
+the data after the last entity list plus the usual file end bytes) adds "may be TRUNCATED": no false positives on the
+19 public fixtures with lists, 91 of 94 test truncations flagged, files without lists not covered. Use
+`skp-ballet info --strict FILE` (also on convert/cache) to exit with status 3 when a model may be partial
+(TRUNCATED, INCOMPLETE or instances NOT placed). Corrupted coordinates (NaN, overflow) are refused with exit 2.
+
 ## Windows / macOS
 
 The `skp-ballet` shell launcher is POSIX only. Everywhere (including Windows and macOS) use
