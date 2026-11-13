@@ -67,3 +67,15 @@ def test_strict_exit_status(tmp_path):
     open(f, "wb").write(full[:18432])
     assert cli.main(["info", "--strict", f]) == 3
     assert cli.main(["info", f]) == 0
+
+
+def test_real_versions_no_false_truncation_warning_and_cut_empty_model_warns():
+    from skpballet import container, scene
+    for p in glob.glob(os.path.join(DATA, "legacy", "*.skp")):
+        d = open(p, "rb").read()
+        if d[:4] == b"\xff\xfe\xff\x0e":
+            m = scene.load(container.open_skp(d))
+            assert not any("TRUNCATED" in w for w in m.warnings), p
+    d = open(os.path.join(DATA, "legacy", "chair_and_table.skp"), "rb").read()[:2048]
+    m = scene.load(container.open_skp(d))   # cut before any geometry: used to look like an empty model
+    assert any("TRUNCATED" in w for w in m.warnings)

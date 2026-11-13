@@ -420,19 +420,28 @@ def _newell(pts):
     return (x, y, z) if (x * x + y * y + z * z) > 1e-18 else None
 
 
+def _end_ok(data):
+    """All public legacy files end in zero padding or a 1 flag; a cut file rarely does."""
+    return (data[-8:] == b"\x00" * 8 or data[-4:] == b"\x01\x00\x00\x00" or data[-5:] == b"\x01\x00\x00\x00\x00"
+            or (data[-1:] == b"\x00" and data[-12:-1].count(0) >= 9))
+
+
 def tail_suspect(data, version=""):
     """True when the bytes after the last entity list are not 2000..4300 long (all 19 public fixtures with lists
     have 2277..4142) or the file does not end in the usual zero/flag bytes. Heuristic for truncation: 0 false positives
     on those 19, flags 91 of 94 truncation cuts."""
+    if _major(version) < 17:   # calibrated on 2017-2020 files only
+        return False
     ends = []
     try:
         scan_lists(data, version, ends=ends)
     except (LegacyError, IndexError, struct.error):
         return False
+    except ValueError:   # e.g. a string cut in half, or a layout this scanner does not know (2013): no evidence
+        return False
     if not ends:
         return False
-    end_ok = (data[-8:] == b"\x00" * 8 or data[-4:] == b"\x01\x00\x00\x00" or data[-5:] == b"\x01\x00\x00\x00\x00"
-              or (data[-1:] == b"\x00" and data[-12:-1].count(0) >= 9))   # all public files end in zero padding / a 1 flag
+    end_ok = _end_ok(data)
     return not (2000 <= len(data) - ends[-1] <= 4300 and end_ok)
 
 
@@ -450,7 +459,7 @@ def load_legacy(skp):
         inf = dict(count=0, parsed=0, complete=True)
     m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
     d = Definition(-1, "root"); m.root = d
-    if tail_suspect(skp.data, skp.version):
+    if tail_suspect(skp.data, skp.version) or (not faces and _major(skp.version) >= 17 and not _end_ok(skp.data)):
         m.warnings.append("legacy file: unusual amount of data after the last entity list, the file may be TRUNCATED (geometry possibly partial)")
     mi = {"base_slot": 10}
     mats = scan_materials(skp.data, mi)
