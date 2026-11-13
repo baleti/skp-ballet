@@ -128,3 +128,33 @@ def test_padded_model_dat_is_warned_and_intact_ones_are_not():
         f = Fake(sk.version, sk.zip)
         f.__dict__["model_dat"] = sk.model_dat + b"\x00\x00"
         assert any("top record length" in w for w in scene.load(f).warnings), path
+
+
+def _rebuild(path, mutate):
+    import io, zipfile, warnings
+    d = open(path, "rb").read()
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    zin = zipfile.ZipFile(io.BytesIO(d[z:]))
+    out = io.BytesIO()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zo:
+            for n in zin.namelist():
+                zo.writestr(n, zin.read(n))
+            mutate(zo, zin)
+        return d[:z] + out.getvalue()
+
+
+def test_container_oddities_are_flagged_not_silent():
+    path = os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp")
+    # duplicate model.dat: zipfile would silently use the last one
+    dup = _rebuild(path, lambda zo, zin: zo.writestr("model.dat", b"\x00" * 10))
+    with pytest.raises(container.SkpError):
+        container.open_skp(dup)
+    # bytes after the archive
+    tail = open(path, "rb").read() + b"JUNK"
+    m = scene.load(container.open_skp(tail))
+    assert any("after the end of the zip" in w for w in m.warnings)
+    # intact files: no container note
+    for p in FILES:
+        assert not any(w.startswith("container:") for w in scene.load(container.open_skp(p)).warnings), p

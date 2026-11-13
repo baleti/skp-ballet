@@ -210,6 +210,8 @@ def _load_any(skp):
 def _load(skp):
     model = Model()
     model.version = skp.version
+    for note in getattr(skp, "container_notes", ()):
+        model.warnings.append("container: " + note + " (extra or damaged data)")
     md = skp.model_dat
     top = parse_tlv(md)[0]
     if len(md) >= 6 and struct.unpack_from("<I", md, 2)[0] != len(md) - 6:   # holds on all public 2021+ fixtures

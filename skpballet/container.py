@@ -54,6 +54,17 @@ def open_skp(src):
     m = re.search(rb"\{\x00((?:[0-9]\x00|\.\x00)+)\}\x00", data[:z])
     ver = m.group(1).decode("utf-16-le") if m else "unknown"
     try:
-        return SkpFile(ver, zipfile.ZipFile(io.BytesIO(data[z:])))
+        zf = zipfile.ZipFile(io.BytesIO(data[z:]))
+        names = zf.namelist()
+        if len(names) != len(set(names)):   # zipfile silently keeps the LAST of two equal names
+            raise SkpError("corrupt container: duplicate zip member names")
+        sk = SkpFile(ver, zf)
+        eocd = data.rfind(b"PK\x05\x06")
+        sk.container_notes = []
+        if eocd >= 0 and len(data) > eocd + 22 + len(zf.comment):
+            sk.container_notes.append("%d bytes after the end of the zip archive" % (len(data) - eocd - 22 - len(zf.comment)))
+        if zf.comment:
+            sk.container_notes.append("zip comment present (%d bytes)" % len(zf.comment))
+        return sk
     except (zipfile.BadZipFile, NotImplementedError, OSError, EOFError) as e:
         raise SkpError("corrupt container: %s" % e)
