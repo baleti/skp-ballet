@@ -2,6 +2,7 @@
 import io
 import os
 import re
+import struct
 import zipfile
 import zlib
 
@@ -85,6 +86,12 @@ def open_skp(src):
         sk = SkpFile(ver, zf)
         eocd = data.rfind(b"PK\x05\x06")
         sk.container_notes = []
+        if eocd >= 0 and len(data) >= eocd + 22:
+            n_decl, c_decl = struct.unpack_from("<H", data, eocd + 10)[0], struct.unpack_from("<H", data, eocd + 20)[0]
+            if n_decl != len(names):
+                sk.container_notes.append("zip end record declares %d entries but the central directory has %d" % (n_decl, len(names)))
+            if c_decl > len(data) - eocd - 22:
+                sk.container_notes.append("zip end record declares a %d byte comment but only %d bytes follow it" % (c_decl, len(data) - eocd - 22))
         if ver == "unknown":
             sk.container_notes.append("version string in the file header is missing or damaged")
         if eocd >= 0 and len(data) > eocd + 22 + len(zf.comment):

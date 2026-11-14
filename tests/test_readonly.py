@@ -593,3 +593,16 @@ def test_unknown_zip_compression_method_fails_cleanly(meth, tmp_path, capsys):
     f.write_bytes(bytes(b))
     assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 2
     assert not (tmp_path / "o.glb").exists() and "Traceback" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("field,val,needle", [(20, 500, "comment"), (10, 9, "entries")])
+def test_lying_zip_end_record_is_warned(field, val, needle, tmp_path, capsys):
+    """260: EOCD entry count or comment length that disagree with the file load but are reported as damaged data."""
+    import struct
+    b = bytearray(open(os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp"), "rb").read())
+    e = b.rfind(b"PK\x05\x06")
+    struct.pack_into("<H", b, e + field, val)
+    f = tmp_path / "l.skp"
+    f.write_bytes(bytes(b))
+    assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 0
+    assert needle in capsys.readouterr().out
