@@ -86,3 +86,22 @@ def test_cli_damaged_inputs_exit_2_without_traceback(tmp_path):
             assert r.returncode in ((0, 2) if name.startswith("legacy") else (2,)) and "Traceback" not in r.stderr, (name, args, r.returncode, r.stderr[-300:])
     r = subprocess.run([sys.executable, "-m", "skpballet", "info", str(tmp_path / "missing.skp")], cwd=root, capture_output=True, text=True)
     assert r.returncode == 2 and "Traceback" not in r.stderr
+
+
+def test_cli_strict_exits_3_on_truncated_legacy_and_default_command_does_not_traceback(tmp_path):
+    import glob, subprocess, sys
+    data = os.path.join(os.path.dirname(__file__), "data", "legacy")
+    root = os.path.dirname(os.path.dirname(__file__))
+    flagged = 0
+    for f in sorted(glob.glob(os.path.join(data, "*.skp")))[:6]:
+        blob = open(f, "rb").read()
+        p = tmp_path / "cut.skp"
+        p.write_bytes(blob[:len(blob) // 2])
+        r = subprocess.run([sys.executable, "-m", "skpballet", "info", str(p), "--strict"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert "Traceback" not in r.stderr and r.returncode in (2, 3), (f, r.returncode, r.stderr[-200:])
+        flagged += r.returncode in (2, 3)
+        # default command (info + viewer) must also fail cleanly; viewer is never started on a rejected file
+        if r.returncode == 2:
+            r2 = subprocess.run([sys.executable, "-m", "skpballet", str(p)], cwd=root, capture_output=True, text=True, timeout=60)
+            assert r2.returncode == 2 and "Traceback" not in r2.stderr
+    assert flagged == len(sorted(glob.glob(os.path.join(data, "*.skp")))[:6]) > 0
