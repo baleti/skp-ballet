@@ -361,3 +361,10 @@ then `56 46 46 08 00 01 00 11 00` (constant) and 4 bytes that differ per file: n
 the whole file or the members (looks like an id). The zip starts at offset 69. The reader checks the 4 magic bytes and
 finds `PK\x03\x04`; flipping any other header byte is accepted (45 of 69 single-bit flips on nesting_2021 changed
 nothing visible, 20 made the version "unknown", 4 were rejected). A missing version now warns.
+
+### Legacy tail cuts (measured 2026-11-14, 29 public legacy fixtures)
+Cutting N bytes off the end, count of fixtures flagged by a `--strict` trigger / silent: N=1: 4/25, N=2: 4/25, N=4: 19/10, N=8: 11/18,
+N=16: 5/24, N=64 and N=256: 27/2. At 90, 95 and 99 percent every fixture carries at least the generic "no known end marker" warning
+but only the cases above reach the strict triggers. The last ~16 to 40 bytes are zero padding or flag words (7 distinct endings in
+29 files), so a cut there loses no geometry but also cannot be told from an intact file. Consequence for any future writer: it must
+never rely on "the reader did not complain" for legacy files; a legacy file without a verified end structure is read-only.
