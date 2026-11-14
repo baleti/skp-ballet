@@ -420,3 +420,13 @@ v5 (one fixture): silent up to a 10 percent cut, strict-flagged from 30 percent 
 The existing end-of-file test `_end_ok` is False on all four intact pre-17 fixtures, so it cannot serve as a guard there
 (it would flag intact files). Conclusion: for legacy versions below 17 there is currently no usable truncation signal that catches a
 mid-file cut; this is the same read-only rule as for any legacy file, now with measured evidence for the older versions.
+
+### Legacy mid-file block damage (measured 2026-11-14, 29 fixtures x 8 random windows per case, seed 178/179, counts compared)
+Windows of 64/256/512 bytes overwritten with 0x00 or 0xFF at random offsets: zero 64: 232 cases, 6 silent count changes; zero 256 and 512:
+0 silent (the zero-run warning catches them, 227/224 warned); 0xFF 64/256/512: 4, 7 and 11 silent count changes. Of 1,392 cases
+(minus refused) the silent changes split into materials 21, layers 10, definitions 5, instances 5, and geometry (vertices/edges/faces)
+4 each; the 9 cases with geometry or tree changes were: edge_flags (3, coordinates zeroed so vertices MERGE: the list still parses
+28 of 28 objects, i.e. value damage inside a parsed record is not detectable without a checksum), 4 definition/instance losses
+(nesting_2013/2017, nested, group_in_definition: a damaged definition record silently drops its definition and the instances using it)
+and materials_and_layers (all faces lost, a layer lost). Same conclusion as the bit-flip measurements: legacy files carry no integrity
+field, so any silent value change is undetectable on read; a writer must never trust a legacy file it cannot verify.
