@@ -62,7 +62,7 @@ element index, `meta.json`, `materials.json`; one element per top-level group/co
 The front-end's default Hidden line style is spoiled by edge line batches: with them a flat public 2021+ fixture
 (nesting_2021) draws nothing and legacy chair_and_table only faint dotted edges; without them both draw clean outlines
 (headless chromium, 2026-11-11). So `cache` omits edge batches unless `--edges` is given. `?style=shaded` or `?style=wire` in the URL selects those styles (`wireframe` is not a valid value and leaves the view empty). An empty model (no
-triangles) never finishes loading in the front-end. Verified in headless chromium on public fixtures.
+triangles) loads in the front-end as "0 elements, 0 triangles" (since the 2026-11-14 spec-valid empty GLB; before it never finished loading); the standalone `skp-ballet FILE` viewer refuses to open on an empty model. Verified in headless chromium on public fixtures.
 
 ## Tools (read-only checks, aggregate output, safe on private files)
 
