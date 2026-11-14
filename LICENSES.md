@@ -7,6 +7,7 @@
 | three.js (+ OrbitControls, GLTFLoader), loaded at run time from the sibling rvt-ballet front-end, not copied here | viewer | MIT |
 | OpenSKP (github.com/iamahsanmehmood/openskp), Copyright (c) 2024-2026 Ahsan Mehmood | its public BINARY_FORMAT.md notes were read as a format reference; code is NOT copied; its 4 small test fixtures `tests/data/*_2021.skp` (synthetic, "no private content") are redistributed; also `tests/data/annotation_layers_vff.skp` and the legacy-format (2013-2020) fixtures in `tests/data/legacy/` (small synthetic files from its repo, MIT) | MIT |
 | (OpenSKP license text) | the MIT notice is kept verbatim in `tests/data/LICENSE-OpenSKP.txt` next to the redistributed fixtures | MIT |
+| openskp 1.5.0 (PyPI, Python edition of OpenSKP) | optional local cross-check only (triangle counts and layer names compared on the public fixtures, 5 of 5 equal); NOT a dependency, not imported by skpballet, not redistributed. Its own dependencies (numpy BSD, trimesh MIT, shapely BSD, mapbox_earcut ISC, defusedxml PSF) were only installed in a scratch directory | MIT |
 | pytest | tests only | MIT |
 
 Not used: the SketchUp C SDK (proprietary Trimble API terms; redistribution and attribution
