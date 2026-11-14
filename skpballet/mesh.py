@@ -334,10 +334,20 @@ def definition_tris(d):
     return out
 
 
+MAX_PLACEMENTS = 500_000   # instance placements walked per export; an instance bomb (8 instances x 12 levels = 8^12) never finishes otherwise
+
+
+def _budget_warning(model, n):
+    msg = "instance expansion stopped after %d placements: the rest is NOT placed (instance bomb or corrupt file)" % n
+    if msg not in model.warnings:
+        model.warnings.append(msg)
+
+
 def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
     """Returns {mat_id: flat list of floats (x,y,z per vertex, metres, Y-up)}.
     If `lines` is a list, edge segments (6 floats each, same space) are appended to it."""
     cache, res, count = {}, {}, [0]
+    nodes = [0]
 
     def emit(tris_by_mat, m):
         for mat, tris in tris_by_mat.items():
@@ -350,8 +360,13 @@ def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
                 count[0] += 1
 
     def walk(d, m, depth):
+        nodes[0] += 1
+        if nodes[0] > MAX_PLACEMENTS:
+            _budget_warning(model, MAX_PLACEMENTS)
+            return
         if depth > max_depth or count[0] > max_tris:
-            model.warnings.append("depth/size limit reached")
+            if "depth/size limit reached" not in model.warnings:
+                model.warnings.append("depth/size limit reached")
             return
         if d.id not in cache:
             cache[d.id] = definition_tris(d)

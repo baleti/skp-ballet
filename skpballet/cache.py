@@ -31,8 +31,13 @@ def build(model, max_depth=24, edges=False):
         return batches.setdefault((kind, mat), dict(kind=kind, mat=mat, pos=[], eidx=[], idx=[], ranges=[], nv=0, nt=0))
 
     cache = {}
+    nodes = [0]
     for ei, (name, cls, cat, d0, m0, sub_only) in enumerate(_elements(model)):
         def walk(d, m, depth, top):
+            nodes[0] += 1
+            if nodes[0] > mesh.MAX_PLACEMENTS:
+                mesh._budget_warning(model, mesh.MAX_PLACEMENTS)
+                return
             if depth > max_depth:
                 return
             if d.id not in cache:

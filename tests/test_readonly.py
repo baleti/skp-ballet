@@ -273,3 +273,26 @@ def test_zip_member_over_the_limit_is_refused_not_inflated(monkeypatch):
         sk.model_dat
     with pytest.raises(container.SkpError):
         scene.load(sk)
+
+
+def test_instance_bomb_is_budgeted_and_reported(tmp_path, monkeypatch):
+    """8 instances per level x 12 levels = 8^12 placements never finished (and grew without bound); now the walk stops at a
+    placement budget and says the rest is NOT placed in the GLB extras and the cache meta (so --strict style checks see it)."""
+    import json, struct
+    from skpballet import mesh, cache, scene
+    monkeypatch.setattr(mesh, "MAX_PLACEMENTS", 2000)
+    I = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]
+    def bomb():
+        m = scene.Model(); m.root = scene.Definition(-1, "root")
+        for k in range(14):
+            d = scene.Definition(k, "d%d" % k); d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+            d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]; m.defs[k] = d
+            if k:
+                d.instances = [dict(def_id=k - 1, matrix=I, name="x", id=None) for _ in range(8)]
+        m.root.instances = [dict(def_id=13, matrix=I, name="r", id=None)]
+        return m
+    m = bomb(); mesh.write_glb(m, str(tmp_path / "b.glb"))
+    raw = (tmp_path / "b.glb").read_bytes(); jl = struct.unpack("<I", raw[12:16])[0]
+    assert any("NOT placed" in w for w in json.loads(raw[20:20 + jl])["asset"]["extras"]["warnings"])
+    m = bomb(); cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    assert any("NOT placed" in w for w in json.loads((tmp_path / "c" / "meta.json").read_text())["warnings"])
