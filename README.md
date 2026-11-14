@@ -61,7 +61,7 @@ element index, `meta.json`, `materials.json`; one element per top-level group/co
 `rvt-ballet serve DIR`. No `model.sqlite` is written, so element parameter and search panels stay empty.
 The front-end's default Hidden line style is spoiled by edge line batches: with them a flat public 2021+ fixture
 (nesting_2021) draws nothing and legacy chair_and_table only faint dotted edges; without them both drew outlines in the 2026-11-11 check. Re-check 2026-11-14 with the current front-end: nesting_2021 in
-Hidden line is BLANK (white faces on white, no edges) at 900x700 and 1400x900, while `?style=shaded` draws the geometry; use `?style=shaded` for flat models. So `cache` omits edge batches unless `--edges` is given. `?style=shaded` or `?style=wire` in the URL selects those styles (`wireframe` is not a valid value and leaves the view empty). An empty model (no
+Hidden line is BLANK (white faces on white, no edges) at 900x700 and 1400x900, while `?style=shaded` draws the geometry; use `?style=shaded` for flat models. Solid models are fine in Hidden line (legacy chair_and_table: 2 elements, 352 triangles, crisp edges, 2026-11-14). So `cache` omits edge batches unless `--edges` is given. `?style=shaded` or `?style=wire` in the URL selects those styles (`wireframe` is not a valid value and leaves the view empty). An empty model (no
 triangles) loads in the front-end as "0 elements, 0 triangles" (since the 2026-11-14 spec-valid empty GLB; before it never finished loading); the standalone `skp-ballet FILE` viewer refuses to open on an empty model. Verified in headless chromium on public fixtures.
 
 ## Tools (read-only checks, aggregate output, safe on private files)
