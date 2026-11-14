@@ -89,6 +89,8 @@ def write_cache(model, outdir, name="model.skp", edges=False):
 
     def add(fmt, vals, target):
         off = len(bin_)
+        if fmt == "f":
+            mesh._check_coords(vals)   # NaN/inf/absurd floats: refuse (ValueError) instead of an OverflowError traceback or a poisoned cache
         bin_.extend(struct.pack("<%d%s" % (len(vals), fmt), *vals))
         bin_.extend(b"\0" * (-len(bin_) % 4))
         views.append(dict(buffer=0, byteOffset=off, byteLength=struct.calcsize("<" + fmt) * len(vals), target=target))

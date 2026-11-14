@@ -2,7 +2,7 @@
 and check the 2021+ reader either decodes or raises a clean error (never hangs, never another exception type)."""
 import glob, os, random, signal
 import pytest
-from skpballet import container, mesh, scene
+from skpballet import cli, container, mesh, scene
 
 FILES = sorted(glob.glob(os.path.join(os.path.dirname(__file__), "data", "*.skp")))
 
@@ -353,3 +353,32 @@ def test_tiling_guard_no_false_positive_and_flags_length_damage():
     sk = container.open_skp(FILES[0]); good = bytearray(sk.model_dat)
     good[6 + 2:6 + 6] = (0x7fffffff).to_bytes(4, "little")   # first child length absurd
     assert tiling_errors(bytes(good)) >= 1
+
+
+def test_absurd_vertex_coordinate_refused_by_convert_and_cache(tmp_path):
+    """A coordinate of ~1e75 loads (value damage is invisible on read) but must never reach a GLB or a cache."""
+    good = container.open_skp(NEST).model_dat
+
+    class F(container.SkpFile):
+        model_dat = None
+
+    def huge(b):
+        f = F(container.open_skp(NEST).version, container.open_skp(NEST).zip)
+        f.__dict__["model_dat"] = bytes(b)
+        try:
+            m = scene.load(f)
+        except Exception:
+            return False
+        return any(abs(c) > 1e30 for d in [m.root] + list(m.defs.values()) if d for v in d.vertices.values() for c in v)
+    bad = None
+    for i in (4445, *range(7, len(good))):   # 4445 = exponent byte of a vertex double in nesting_2021 (fast path); the scan is a fallback
+        b = bytearray(good); b[i] = 0x54
+        if huge(b):
+            bad = bytes(b); break
+    assert bad is not None, "no byte position turned a vertex into an absurd value"
+    src = tmp_path / "bad.skp"
+    src.write_bytes(_swap_member(lambda n: n == "model.dat", bad))
+    out = tmp_path / "o.glb"; cdir = tmp_path / "cache"
+    assert cli.main(["convert", str(src), str(out)]) != 0 and not out.exists()
+    assert cli.main(["cache", str(src), str(cdir)]) != 0
+    assert not (cdir / "model.glb").exists()
