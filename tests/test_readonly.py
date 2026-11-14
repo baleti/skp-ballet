@@ -205,3 +205,15 @@ def test_out_of_range_material_values_never_reach_glb_or_cache(rgb, alpha, tmp_p
     meta = json.loads((tmp_path / "c" / "meta.json").read_text())
     for b in meta["batches"]:
         assert 0.0 <= b["alpha"] <= 1.0 and len(b["color"]) == 7 and b["color"].startswith("#"), b
+
+
+def test_info_text_output_sanitises_file_controlled_names(capsys, monkeypatch):
+    from skpballet import cli, scene, container
+    m = scene.Model(); d = scene.Definition(0, "x\ud800y\x1b[31mRED‮"); m.root = scene.Definition(-1, "root")
+    d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}; d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]
+    m.defs[0] = d; m.layers[1] = "L\ud800\x07"; m.materials[1] = dict(name="M\x1b]0;t\x07", rgb=(1, 2, 3), alpha=1.0)
+    m.warnings.append("w\x1b[2J")
+    monkeypatch.setattr(scene, "load", lambda s: m); monkeypatch.setattr(container, "open_skp", lambda p: None)
+    assert cli.main(["info", "f"]) == 0
+    out = capsys.readouterr().out
+    assert "\x1b" not in out and "\x07" not in out and "‮" not in out and "RED" in out

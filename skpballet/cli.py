@@ -3,10 +3,12 @@ skp-ballet info [--json] FILE  print contents only (bbox in metres, Y-up)
 skp-ballet convert FILE [OUT]  write a .glb
 skp-ballet cache FILE DIR      write an rvt-ballet cache folder (view with: rvt-ballet serve DIR)"""
 import argparse
+import builtins
 import functools
 import json
 import http.server
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -39,7 +41,17 @@ def info_json(path):
     return m
 
 
+_CTRL = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f\ud800-\udfff\u202a-\u202e\u2066-\u2069]")
+
+
+def _clean(s):
+    """File-controlled text goes to a terminal: drop control characters (ANSI escapes), lone surrogates (print would raise) and bidi overrides."""
+    return _CTRL.sub("?", s)
+
+
 def info(path):
+    def print(*a, **k):
+        builtins.print(*[_clean(x) if isinstance(x, str) else x for x in a], **k)
     skp = container.open_skp(path)
     m = scene.load(skp)
     print("file:      %s" % os.path.basename(path))
