@@ -474,6 +474,10 @@ def load_legacy(skp):
         m.warnings.append("legacy file: unusual amount of data after the last entity list, the file may be TRUNCATED (geometry possibly partial)")
     if dropped_classes(skp.data):
         m.warnings.append("legacy file contains objects that are NOT read and not shown: " + ", ".join(dropped_classes(skp.data)))
+        if "CImage" in dropped_classes(skp.data):
+            m.warnings.append("legacy file contains an image: the first entity list that is shown may be the image's own face (a "
+                              "definition), not the model's root geometry, which can then be NOT read (image.skp: 48x36 in image face shown, "
+                              "the 10x10 in root face missing)")
     mi = {"base_slot": 10}
     mats = scan_materials(skp.data, mi)
     for i, mt in enumerate(mats):

@@ -385,3 +385,9 @@ but parseable file is accepted; a writer must never "repair" or re-emit a legacy
 only by zip member CRC32 (see the deflated-member test): flips in the stored file are caught, but a flip made before compression
 (for example by a writer bug, since the writer recomputes the CRC) is accepted and shows up only as changed geometry. For a writer
 this means the oracle for correctness cannot be "reads back without error"; it must compare decoded content with the intended edit.
+
+### image.skp: first entity list is the image definition (found 2026-11-14 by cross-check with openskp)
+Public fixture image.skp holds a root face of 10x10 in at the origin and one hidden instance (rotated 90 degrees about X, moved 40 in)
+of a definition `Image0` that has its own 48x36 in face. The first entity list in the file is the IMAGE definition's, and the
+reader shows it as the model (48x36 face) while the root's 10x10 face is not read. Now warned ("the image's own face"), which
+triggers `--strict` together with the existing CImage "NOT read" warning. Not fixed: needs the root list located without a tree.

@@ -105,3 +105,9 @@ def test_cli_strict_exits_3_on_truncated_legacy_and_default_command_does_not_tra
             r2 = subprocess.run([sys.executable, "-m", "skpballet", str(p)], cwd=root, capture_output=True, text=True, timeout=60)
             assert r2.returncode == 2 and "Traceback" not in r2.stderr
     assert flagged == len(sorted(glob.glob(os.path.join(data, "*.skp")))[:6]) > 0
+
+
+def test_legacy_image_file_warns_that_shown_face_may_be_the_image_definition():
+    from skpballet import container, scene
+    m = scene.load(container.open_skp(os.path.join(os.path.dirname(__file__), "data", "legacy", "image.skp")))
+    assert any("image's own face" in w for w in m.warnings), m.warnings
