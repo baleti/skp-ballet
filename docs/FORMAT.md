@@ -397,7 +397,7 @@ annotation 19, layer 12, def 7, text 7, multi-section 6, 9 differ only in line m
 ids, transforms); the zip CRC does not protect the DECOMPRESSED stream if a writer re-deflates it, so a gate must compare decoded content.
 
 Size of the silent 2021+ coordinate changes (same flips, 77 flips changed a vertex with no warning): shift relative to the model extent is <= 1e-9 in 57,
-<= 1e-6 in 62, <= 1e-3 in 68, <= 0.1 in 73, <= 1 in 75, 1 reached 1e75 (finite, not caught). 74 percent are low-mantissa flips below any visible effect,
+<= 1e-6 in 62, <= 1e-3 in 68, <= 0.1 in 73, <= 1 in 75, 1 reached 1e75 (accepted by scene.load, REFUSED at GLB export by the 1e30 guard in mesh._check_coords). 74 percent are low-mantissa flips below any visible effect,
 so a plausibility guard on magnitude would catch about 1 of 77 (2 or 3 with a 'larger than 10 x extent' rule); it cannot replace the content diff.
 
 ### image.skp: first entity list is the image definition (found 2026-11-14 by cross-check with openskp)
