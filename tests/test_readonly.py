@@ -246,3 +246,19 @@ def test_safe_join_blocks_symlinks_leaving_the_vendor_dir(tmp_path):
     assert os.path.exists(safe_join(str(v), "ok.js"))
     for p in ("l.js", "up/secret", "../secret", "%2e%2e/secret", "..%2fsecret"):
         assert not os.path.exists(safe_join(str(v), p)), p
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+def test_fifo_and_directory_inputs_fail_fast_instead_of_blocking(tmp_path):
+    from skpballet import container
+    fifo = tmp_path / "f.skp"; os.mkfifo(fifo)
+    for p in (fifo, tmp_path):
+        with pytest.raises(container.SkpError, match="not a regular file"):
+            container.open_skp(str(p))   # without the fix the FIFO open blocks forever (no writer)
+
+
+def test_oversized_input_refused_before_reading(monkeypatch):
+    from skpballet import container
+    monkeypatch.setattr(container, "MAX_BYTES", 100)
+    with pytest.raises(container.SkpError, match="larger than"):
+        container.open_skp(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"))

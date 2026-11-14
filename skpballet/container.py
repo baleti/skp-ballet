@@ -1,5 +1,6 @@
 """SKP outer container (SketchUp 2021+): UTF-16 header, then an embedded ZIP holding model.dat."""
 import io
+import os
 import re
 import zipfile
 import zlib
@@ -36,13 +37,32 @@ class LegacySkp:
         self.version, self.data = version, data
 
 
+MAX_BYTES = 4 << 30   # no real .skp is near this; refuse instead of reading an unbounded or device file into memory
+
+
+def _read_regular(path):
+    """Read a regular file only: a FIFO would block forever on open, /dev/zero would fill memory. O_NONBLOCK (where it exists)
+    keeps the open of a FIFO from blocking; fstat then rejects anything that is not a regular file."""
+    import stat
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise SkpError("not a regular file (device, pipe or directory): %s" % os.path.basename(str(path)))
+        if st.st_size > MAX_BYTES:
+            raise SkpError("file is larger than %d GiB: refusing to read it into memory" % (MAX_BYTES >> 30))
+        with os.fdopen(fd, "rb", closefd=False) as fh:
+            return fh.read()
+    finally:
+        os.close(fd)
+
+
 def open_skp(src):
     """src: path or bytes. Raises ValueError for non-SKP or pre-2021 (MFC archive) files."""
     if isinstance(src, (bytes, bytearray)):
         data = src
     else:
-        with open(src, "rb") as fh:
-            data = fh.read()
+        data = _read_regular(src)
     if data[:4] != MAGIC:
         raise SkpError("not a SketchUp file (bad magic)")
     z = data.find(b"PK\x03\x04", 4, 4096)
