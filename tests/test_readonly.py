@@ -562,3 +562,18 @@ def test_layer_and_material_names_agree_across_outputs(src, tmp_path, capsys):
     mats = json.loads((tmp_path / "c" / "materials.json").read_text())["materials"]
     names = sorted(m["name"] for m in mats if m["name"] != "default")
     assert set(names) <= set(info["material_names"])
+
+
+def test_encrypted_flag_in_zip_members_fails_cleanly(tmp_path, capsys):
+    """258b: a 2021+ file whose zip headers claim encryption exits 2 with a message, no traceback, no output."""
+    b = bytearray(open(os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp"), "rb").read())
+    for sig, off in ((b"PK\x03\x04", 6), (b"PK\x01\x02", 8)):
+        j = b.find(sig)
+        while j >= 0:
+            b[j + off] |= 1
+            j = b.find(sig, j + 4)
+    f = tmp_path / "e.skp"
+    f.write_bytes(bytes(b))
+    assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 2
+    assert not (tmp_path / "o.glb").exists()
+    assert "Traceback" not in capsys.readouterr().err
