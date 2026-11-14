@@ -430,3 +430,12 @@ Windows of 64/256/512 bytes overwritten with 0x00 or 0xFF at random offsets: zer
 (nesting_2013/2017, nested, group_in_definition: a damaged definition record silently drops its definition and the instances using it)
 and materials_and_layers (all faces lost, a layer lost). Same conclusion as the bit-flip measurements: legacy files carry no integrity
 field, so any silent value change is undetectable on read; a writer must never trust a legacy file it cannot verify.
+
+### 2021+ model.dat block damage (measured 2026-11-14, 5 fixtures x 40 random windows per case, seed 180, decoded COUNTS compared)
+Windows of the DECOMPRESSED stream overwritten (a file read from disk is additionally protected by the zip CRC32; this models damage made
+before compression, i.e. a writer bug): 0x00 x16: 12 warned, 27 changed silently of 200; x64: 23 warned, 47 silent; x256: 19 warned, 100 silent
+(half of all cases); 0xFF x16/64/256: 28, 55, 88 silent of 200. 0 refused, 0 hangs. An all-zero model.dat is flagged only through the top
+record length warning. Harness pitfall found while measuring: the fake file class must set `model_dat = None` at class level (as
+tests/test_fuzz_model_dat.py does), otherwise the property wins and the "damage" is silently not applied (my first run reported 1,200
+unchanged cases for that reason). Conclusion unchanged: for 2021+ the reader cannot be the oracle of a writer; compare decoded content
+against the intended edit and rely on the CRC only for stored files.
