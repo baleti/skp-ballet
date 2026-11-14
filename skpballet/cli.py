@@ -177,11 +177,11 @@ def main(argv=None):
             return 0
         if cmd == "cache":
             from . import cache
-            print(cache.write_cache(m, ns.outdir, os.path.basename(ns.file), edges=ns.edges), "->", ns.outdir)
+            print(cache.write_cache(m, ns.outdir, os.path.basename(ns.file), edges=ns.edges, strict=ns.strict), "->", ns.outdir)
             return 0
         if cmd == "convert":
             out = ns.out or os.path.splitext(ns.file)[0] + ".glb"
-            print("triangles:", mesh.write_glb(m, out), "->", out)
+            print("triangles:", mesh.write_glb(m, out, strict=ns.strict), "->", out)
             return 0
         glb = os.path.join(tempfile.mkdtemp(prefix="skpballet-"), "model.glb")
         ntri = mesh.write_glb(m, glb)
@@ -190,6 +190,9 @@ def main(argv=None):
             print("skp-ballet: the file has no triangles to show; not opening the viewer", file=sys.stderr)
             return 1
         return serve(glb, ns.port, not ns.no_browser)
+    except mesh.StrictTruncation as e:
+        print("skp-ballet: %s" % _clean(str(e)), file=sys.stderr)
+        return 3
     except (ValueError, OSError) as e:
         print("skp-ballet: %s" % _clean(str(e)), file=sys.stderr)
         return 2

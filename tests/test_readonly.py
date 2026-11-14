@@ -309,3 +309,16 @@ def test_cache_has_a_triangle_cap_like_flatten(tmp_path, monkeypatch):
     cache.write_cache(m, str(tmp_path / "c"), "x.skp")
     meta = json.loads((tmp_path / "c" / "meta.json").read_text())
     assert sum(b["tris"] for b in meta["batches"]) <= 60 and any("NOT placed" in w for w in meta["warnings"])
+
+
+def test_strict_refuses_an_export_that_truncates_at_a_limit(tmp_path, monkeypatch):
+    """The strict check runs on load-time warnings; a limit hit DURING export (placements/triangles) used to write a partial
+    GLB/cache and exit 0 even with --strict. Now exit 3 and nothing written; non-strict still writes, with the warning."""
+    from skpballet import cli, mesh
+    nest = os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp")
+    monkeypatch.setattr(mesh, "MAX_PLACEMENTS", 1)
+    out = tmp_path / "o.glb"; out.write_bytes(b"keep"); cdir = tmp_path / "cc"
+    assert cli.main(["convert", "--strict", nest, str(out)]) == 3 and out.read_bytes() == b"keep"
+    assert cli.main(["cache", "--strict", nest, str(cdir)]) == 3 and not cdir.exists()
+    assert cli.main(["convert", nest, str(out)]) == 0 and out.read_bytes()[:4] == b"glTF"
+    assert cli.main(["cache", nest, str(cdir)]) == 0 and (cdir / "model.glb").exists()

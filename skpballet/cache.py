@@ -88,9 +88,12 @@ def build(model, max_depth=24, edges=False):
     return elements, batches
 
 
-def write_cache(model, outdir, name="model.skp", edges=False):
-    os.makedirs(outdir, exist_ok=True)
+def write_cache(model, outdir, name="model.skp", edges=False, strict=False):
+    nw = len(model.warnings)
     elements, batches = build(model, edges=edges)
+    if strict and mesh._truncated(model, nw):
+        raise mesh.StrictTruncation("--strict: export truncated, nothing written: " + mesh._truncated(model, nw)[0])
+    os.makedirs(outdir, exist_ok=True)
     mats = [dict(name="default", rgb=[200, 200, 200], alpha=1.0, tex_class="none")]
     midx = {None: 0}
     for k, mt in model.materials.items():

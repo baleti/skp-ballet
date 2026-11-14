@@ -444,8 +444,17 @@ def atomic_open(path, mode="wb", **kw):
         raise
 
 
-def write_glb(model, path, edges=True):
+class StrictTruncation(ValueError):
+    """--strict export refused because a placement/triangle/depth limit truncated the model (nothing is written)."""
+
+
+def _truncated(model, before):
+    return [w for w in model.warnings[before:] if "NOT placed" in w or "depth/size limit" in w]
+
+
+def write_glb(model, path, edges=True, strict=False):
     seg = [] if edges else None
+    nw = len(model.warnings)
     import gc
     was = gc.isenabled(); gc.disable()
     try:
@@ -453,6 +462,8 @@ def write_glb(model, path, edges=True):
     finally:
         if was:
             gc.enable()
+    if strict and _truncated(model, nw):
+        raise StrictTruncation("--strict: export truncated, nothing written: " + _truncated(model, nw)[0])
     bin_, views, accs, prims, mats = bytearray(), [], [], [], []
     for mid, buf in sorted(res.items(), key=lambda kv: str(kv[0])):
         if not buf:
