@@ -219,6 +219,13 @@ def test_info_text_output_sanitises_file_controlled_names(capsys, monkeypatch):
     assert "\x1b" not in out and "\x07" not in out and "‮" not in out and "RED" in out
 
 
+def _symlink(target, link):
+    try:
+        os.symlink(target, link)
+    except (OSError, NotImplementedError):   # Windows without the symlink privilege
+        pytest.skip("cannot create symlinks here")
+
+
 def test_outputs_never_write_through_symlinks_to_the_source(tmp_path):
     """cache wrote model.glb/meta.json/materials.json THROUGH symlinks placed in the output dir: a link to the source .skp
     overwrote the original. Outputs are now temp file + os.replace, so the link is replaced and the source is untouched."""
@@ -228,13 +235,13 @@ def test_outputs_never_write_through_symlinks_to_the_source(tmp_path):
     before = hashlib.sha256(src.read_bytes()).hexdigest()
     cdir = tmp_path / "cc"; cdir.mkdir()
     for n in ("model.glb", "meta.json", "materials.json"):
-        os.symlink(src, cdir / n)
+        _symlink(src, cdir / n)
     assert cli.main(["cache", str(src), str(cdir)]) == 0
     assert hashlib.sha256(src.read_bytes()).hexdigest() == before
     assert not os.path.islink(cdir / "model.glb") and (cdir / "model.glb").read_bytes()[:4] == b"glTF"
     assert not [f for f in os.listdir(cdir) if f.endswith(".tmp")]
     # convert to a symlink that points at the source: refused or replaced, never written through
-    out = tmp_path / "o.glb"; os.symlink(src, out)
+    out = tmp_path / "o.glb"; _symlink(src, out)
     cli.main(["convert", str(src), str(out)])
     assert hashlib.sha256(src.read_bytes()).hexdigest() == before
 
@@ -242,7 +249,7 @@ def test_outputs_never_write_through_symlinks_to_the_source(tmp_path):
 def test_safe_join_blocks_symlinks_leaving_the_vendor_dir(tmp_path):
     from skpballet.cli import safe_join
     v = tmp_path / "v"; v.mkdir(); (tmp_path / "secret").write_text("s"); (v / "ok.js").write_text("x")
-    os.symlink(tmp_path / "secret", v / "l.js"); os.symlink(tmp_path, v / "up")
+    _symlink(tmp_path / "secret", v / "l.js"); _symlink(tmp_path, v / "up")
     assert os.path.exists(safe_join(str(v), "ok.js"))
     for p in ("l.js", "up/secret", "../secret", "%2e%2e/secret", "..%2fsecret"):
         assert not os.path.exists(safe_join(str(v), p)), p
