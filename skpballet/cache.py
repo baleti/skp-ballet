@@ -83,7 +83,8 @@ def write_cache(model, outdir, name="model.skp", edges=False):
     midx = {None: 0}
     for k, mt in model.materials.items():
         midx[k] = len(mats)
-        mats.append(dict(name=mt["name"], rgb=list(mt["rgb"]), alpha=mt["alpha"], tex_class="none"))
+        _rgb, _a = mesh.sane_color(mt["rgb"], mt["alpha"])
+        mats.append(dict(name=mt["name"], rgb=_rgb, alpha=_a, tex_class="none"))
     bin_, views, accs, meshes, matsj, nodes, bmeta = bytearray(), [], [], [], [], [], []
     lo, hi = [1e30] * 3, [-1e30] * 3
 

@@ -371,6 +371,22 @@ def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
     return res
 
 
+def sane_color(rgb, alpha):
+    """Clamp a material colour to what glTF and the viewers accept: channels int 0..255 (NaN or non-numeric -> 200), alpha 0..1
+    (NaN -> 1). Damaged or out-of-range material values must not produce a GLB with factors outside 0..1 or a NaN."""
+    def ch(c):
+        try:
+            c = float(c)
+        except (TypeError, ValueError):
+            return 200
+        return 200 if c != c else int(min(255, max(0, round(c))))
+    try:
+        a = float(alpha)
+    except (TypeError, ValueError):
+        a = 1.0
+    return [ch(c) for c in list(rgb)[:3]], (1.0 if a != a else min(1.0, max(0.0, a)))
+
+
 def _lin(c):
     """sRGB byte -> linear float (glTF baseColorFactor is linear)."""
     c = c / 255.0
@@ -406,6 +422,7 @@ def write_glb(model, path, edges=True):
         accs.append(dict(bufferView=len(views) - 1, componentType=5126, count=n, type="VEC3",
                          min=[min(xs), min(ys), min(zs)], max=[max(xs), max(ys), max(zs)]))
         mt = model.materials.get(mid, dict(name="default", rgb=(200, 200, 200), alpha=1.0))
+        mt = dict(mt, **dict(zip(("rgb", "alpha"), sane_color(mt["rgb"], mt["alpha"]))))
         mats.append(dict(name=mt["name"], doubleSided=True,
                          pbrMetallicRoughness=dict(baseColorFactor=[_lin(c) for c in mt["rgb"]] + [mt["alpha"]],
                                                    metallicFactor=0, roughnessFactor=0.9),

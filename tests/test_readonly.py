@@ -183,3 +183,25 @@ def test_legacy_plane_misfit_is_warned(tmp_path):
     # normal flipped to disagree with the loop
     flipped = raw.replace(pat, struct.pack("<4d", 0.0, 0.0, -1.0, 5.0), 1)
     assert warns(flipped)
+
+
+@pytest.mark.parametrize("rgb,alpha", [((300, 0, 0), 1.0), ((-5, 0, 0), 1.0), ((255, 0, 0), -0.5), ((255, 0, 0), float("nan")),
+                                      ((255, 0, 0), 3.0), ((float("nan"), 0, 0), 1.0)])
+def test_out_of_range_material_values_never_reach_glb_or_cache(rgb, alpha, tmp_path):
+    import json, math, struct
+    from skpballet import mesh, cache, scene
+    m = scene.Model(); d = scene.Definition(-1, "root"); m.root = d
+    d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=1, normal=(0, 0, 1))]
+    m.materials[1] = dict(name="x", rgb=rgb, alpha=alpha)
+    def factors(path):
+        raw = open(path, "rb").read(); jl = struct.unpack("<I", raw[12:16])[0]
+        j = json.loads(raw[20:20 + jl], parse_constant=lambda c: pytest.fail("non-finite JSON constant " + c))
+        return [x for mt in j["materials"] for x in mt["pbrMetallicRoughness"]["baseColorFactor"]]
+    mesh.write_glb(m, str(tmp_path / "a.glb"))
+    cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    for path in (tmp_path / "a.glb", tmp_path / "c" / "model.glb"):
+        assert all(0.0 <= x <= 1.0 and not math.isnan(x) for x in factors(str(path))), path
+    meta = json.loads((tmp_path / "c" / "meta.json").read_text())
+    for b in meta["batches"]:
+        assert 0.0 <= b["alpha"] <= 1.0 and len(b["color"]) == 7 and b["color"].startswith("#"), b

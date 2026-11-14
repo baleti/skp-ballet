@@ -232,9 +232,11 @@ def _load(skp):
                 el = ET.fromstring(skp.read(n)).find("{*}material")
                 xml[m.group(1)] = (int(el.get("colorRed")), int(el.get("colorGreen")),
                                    int(el.get("colorBlue")), int(el.get("useTrans", "0")),
-                                   int(el.get("trans", "0")))
+                                   float(el.get("trans", "0")))
             except ET.ParseError:
                 model.warnings.append("materials: %s is not well-formed XML (extra or damaged data)" % n)
+            except (ValueError, TypeError, OverflowError):   # a <material> element with a non-numeric colour/trans attribute: damaged, not silently grey
+                model.warnings.append("materials: %s has a non-numeric colour or transparency (damaged data); default colour used" % n)
             except Exception:
                 pass   # layer material.xml files have no <material> element; not an error
     for lst in top.find(0x1F7):
