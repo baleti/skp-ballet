@@ -380,6 +380,11 @@ all flips, 33 percent of flips that mattered), 7 rejected, 0 hangs, 0 unexpected
 870 flips looked silent, because most silent changes move coordinates. The legacy container has no integrity field, so a damaged
 but parseable file is accepted; a writer must never "repair" or re-emit a legacy file it has only read.
 
+Where the silent flips land (2026-11-14, 580 flips, seed 129, decoded content compared with tools/model_diff canon): 51 flips (8.8 percent) change
+decoded content with no new warning: vertex coordinates 24, materials 14, instance transform or definition ref 9, layers 3, definition name 1. All are
+value damage inside doubles, strings and ids, invisible to structure guards. The plane check (stored plane vs loop) adds 0 detections on random flips
+(about 32 bytes per face) and only catches targeted plane damage. A save gate must use the decoded-content diff, not "loads without warning".
+
 ### 2021+ model.dat interior bit flips (measured 2026-11-14, 5 fixtures x 300 flips of the DECOMPRESSED stream, seed 13, GLB sha256)
 1183 no effect, 261 changed output SILENTLY (17 percent), 54 changed with a warning, 2 rejected, 0 hangs. Real files are protected
 only by zip member CRC32 (see the deflated-member test): flips in the stored file are caught, but a flip made before compression
