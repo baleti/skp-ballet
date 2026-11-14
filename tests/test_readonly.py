@@ -114,3 +114,12 @@ def test_legacy_image_file_uses_root_list_not_image_definition():
     xs = sorted(p[0] for p in m.root.vertices.values())
     assert xs == [0.0, 0.0, 10.0, 10.0], m.root.vertices
     assert any("LAST entity list" in w for w in m.warnings), m.warnings
+
+
+def test_legacy_multiple_lists_with_rejected_tree_warns(monkeypatch):
+    from skpballet import container, legacy, scene
+    f = os.path.join(os.path.dirname(__file__), "data", "legacy", "components.skp")
+    assert not any("definition tree was rejected" in w for w in scene.load(container.open_skp(f)).warnings)
+    monkeypatch.setattr(legacy, "legacy_tree", lambda *a, **k: None)
+    m = scene.load(container.open_skp(f))
+    assert any("definition tree was rejected" in w and "NOT read" in w for w in m.warnings), m.warnings

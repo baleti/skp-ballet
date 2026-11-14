@@ -550,6 +550,13 @@ def load_legacy(skp):
     for ei, (pa, pb) in enumerate(inf.get("edges") or []):
         d.edges[ei] = (vid.setdefault(pa, len(vid)), vid.setdefault(pb, len(vid)))
     d.vertices = {i: p for p, i in vid.items()}
+    try:
+        nlists = len(scan_lists(skp.data, skp.version)) if faces else 0
+    except (LegacyError, IndexError, struct.error, TypeError, ValueError):
+        nlists = 0
+    if nlists >= 2 and not root_from_last:
+        m.warnings.append("legacy file has %d entity lists but the definition tree was rejected: the shown geometry is the first list "
+                          "and may not be the model root; other lists are NOT read" % nlists)
     if b"CComponentInstance" in skp.data or b"CGroup" in skp.data:
         m.warnings.append("legacy file has components/groups but their lists do not fit the strict definition-tree rules: instances are NOT placed")
     m.warnings.append("legacy 2013-2020 reader is experimental: only the first entity list is decoded (%s of %s objects%s)"
