@@ -415,3 +415,14 @@ def test_empty_model_glb_obeys_gltf_minitems(tmp_path):
     for k in ("meshes", "materials", "accessors", "bufferViews", "buffers"):
         assert k not in js
     assert "mesh" not in js["nodes"][0] and len(b) == 20 + n
+
+
+@pytest.mark.parametrize("src", FILES[:6], ids=os.path.basename)
+def test_cache_and_convert_are_deterministic(src, tmp_path):
+    """245: same input gives byte-identical cache dirs and GLBs (no timestamps/ordering noise)."""
+    for n in "ab":
+        assert cli.main(["cache", src, str(tmp_path / n)]) == 0
+        assert cli.main(["convert", src, str(tmp_path / (n + ".glb"))]) == 0
+    for name in os.listdir(tmp_path / "a"):
+        assert (tmp_path / "a" / name).read_bytes() == (tmp_path / "b" / name).read_bytes(), name
+    assert (tmp_path / "a.glb").read_bytes() == (tmp_path / "b.glb").read_bytes()
