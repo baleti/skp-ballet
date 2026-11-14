@@ -135,3 +135,17 @@ def test_legacy_untested_versions_6_to_16_warn(monkeypatch, capsys):
     for major, expect in ((5, False), (6, True), (9, True), (12, True), (13, False), (14, True), (16, True), (17, False)):
         real.version = "%d.0.1" % major
         assert any("UNTESTED" in w for w in legacy.load_legacy(real).warnings) == expect, major
+
+
+def test_strict_failure_writes_nothing_and_leaves_existing_output(tmp_path):
+    from skpballet import cli
+    raw = open(os.path.join(os.path.dirname(__file__), "data", "legacy", "components.skp"), "rb").read(); n = len(raw)
+    bad = tmp_path / "bad.skp"; bad.write_bytes(raw[:n // 2] + bytes(n - n // 2))   # zero-filled half: damaged data
+    pre = tmp_path / "pre.glb"; pre.write_bytes(b"keep")
+    assert cli.main(["convert", "--strict", str(bad), str(pre)]) == 3
+    assert pre.read_bytes() == b"keep"
+    assert cli.main(["convert", "--strict", str(bad), str(tmp_path / "new.glb")]) == 3
+    assert not (tmp_path / "new.glb").exists()
+    cd = tmp_path / "cache"; cd.mkdir(); (cd / "model.glb").write_bytes(b"keep")
+    assert cli.main(["cache", "--strict", str(bad), str(cd)]) == 3
+    assert (cd / "model.glb").read_bytes() == b"keep" and os.listdir(cd) == ["model.glb"]
