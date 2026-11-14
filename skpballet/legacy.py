@@ -439,7 +439,7 @@ def tail_suspect(data, version=""):
     """True when the bytes after the last entity list are not 2000..4300 long (all 19 public fixtures with lists
     have 2277..4142) or the file does not end in the usual zero/flag bytes. Heuristic for truncation: 0 false positives
     on those 19, flags 91 of 94 truncation cuts."""
-    if _major(version) < 17:   # calibrated on 2017-2020 files only
+    if _major(version) < 17 and _major(version) != 13:   # calibrated on 2017-2020 files (and 13, one fixture) only
         return False
     ends = []
     try:
@@ -450,6 +450,8 @@ def tail_suspect(data, version=""):
         return False
     if not ends:
         return False
+    if _major(version) == 13:   # nesting_2013 (only fixture): tail 2246 bytes, end bytes do NOT match _end_ok; length window only
+        return not (2000 <= len(data) - ends[-1] <= 4300)
     end_ok = _end_ok(data)
     return not (2000 <= len(data) - ends[-1] <= 4300 and end_ok)
 

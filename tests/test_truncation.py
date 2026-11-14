@@ -168,3 +168,15 @@ def test_info_json_has_texts_and_annotations(capsys):
     assert cli.main(["info", "--json", os.path.join(DATA, "annotation_layers_vff.skp")]) == 0
     d = json.loads(capsys.readouterr().out)
     assert "Dot" in d["texts"] and d["annotations"].count("dimension") == 4 and "Layer0" in d["layer_names"]
+
+
+def test_v13_mid_file_cut_is_flagged_but_intact_file_is_not(tmp_path):
+    """nesting_2013 (the only v13 fixture): cuts of 30 and 50 percent used to lose geometry silently."""
+    from skpballet import container, scene
+    src = os.path.join(os.path.dirname(__file__), "data", "legacy", "nesting_2013.skp")
+    raw = open(src, "rb").read()
+    def warned(b):
+        p = tmp_path / "c.skp"; p.write_bytes(b)
+        return any("TRUNCATED" in w for w in scene.load(container.open_skp(str(p))).warnings)
+    assert not warned(raw)
+    assert warned(raw[:len(raw) * 7 // 10]) and warned(raw[:len(raw) // 2])
