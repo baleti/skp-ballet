@@ -218,6 +218,11 @@ def _load(skp):
         model.warnings.append("model.dat: top record length does not match the stream size (%d bytes after it): extra or damaged data" % (len(md) - 6 - struct.unpack_from("<I", md, 2)[0]))
     xml = {}
     for n in skp.names():
+        if n.startswith("styles/") and n.endswith(".xml"):
+            try:
+                ET.fromstring(skp.read(n))
+            except ET.ParseError:
+                model.warnings.append("styles: %s is not well-formed XML (extra or damaged data)" % n)
         m = re.match(r"materials/(.+)/material\.xml$", n)
         if m:
             try:

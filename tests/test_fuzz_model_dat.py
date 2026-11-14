@@ -239,3 +239,38 @@ def test_unparseable_material_xml_warns():
             w.writestr(i.filename, b"<broken" if i.filename.endswith("material.xml") else src.read(i.filename))
     m = scene.load(container.open_skp(d[:z] + out.getvalue()))
     assert any("not well-formed" in w for w in m.warnings), m.warnings
+
+
+def _swap_member(pred, payload):
+    import io, zipfile
+    d = open(NEST, "rb").read()
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    src = zipfile.ZipFile(io.BytesIO(d[z:]))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as w:
+        for i in src.infolist():
+            w.writestr(i.filename, payload if pred(i.filename) else src.read(i.filename))
+    return d[:z] + out.getvalue()
+
+
+def test_malformed_style_xml_warns():
+    m = scene.load(container.open_skp(_swap_member(lambda n: n.startswith("styles/"), b"<broken")))
+    assert any("styles:" in w for w in m.warnings), m.warnings
+
+
+@pytest.mark.parametrize("damage", ["style", "nometa", "crc"])
+def test_cli_strict_exits_3_on_container_damage(damage, tmp_path):
+    import subprocess, sys
+    if damage == "style":
+        data = _swap_member(lambda n: n.startswith("styles/"), b"<broken")
+    elif damage == "nometa":
+        data = _rezip(NEST, drop=lambda n: n == "meta/meta.dat")
+    else:
+        data = _rezip(NEST, flip_member=b"meta/meta.dat")
+    p = tmp_path / "x.skp"
+    p.write_bytes(data)
+    root = os.path.dirname(os.path.dirname(__file__))
+    r = subprocess.run([sys.executable, "-m", "skpballet", "info", str(p), "--strict"], cwd=root, capture_output=True, text=True)
+    assert r.returncode == 3, (r.returncode, r.stderr)
+    r = subprocess.run([sys.executable, "-m", "skpballet", "info", NEST, "--strict"], cwd=root, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
