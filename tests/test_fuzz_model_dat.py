@@ -396,3 +396,14 @@ def test_absurd_instance_matrix_refused_by_convert_and_cache(val, tmp_path):
     assert cli.main(["convert", str(src), str(out)]) != 0 and not out.exists()
     assert cli.main(["cache", str(src), str(cdir)]) != 0
     assert not (cdir / "model.glb").exists()
+
+
+@pytest.mark.parametrize("off", [4445, 6292])
+def test_absurd_values_warn_in_info_and_fail_strict(off, tmp_path):
+    good = bytearray(container.open_skp(NEST).model_dat)
+    good[off] = 0x54 if off == 4445 else 0x7F
+    src = tmp_path / "bad.skp"
+    src.write_bytes(_swap_member(lambda n: n == "model.dat", bytes(good)))
+    assert any("absurd coordinates" in w for w in scene.load(container.open_skp(str(src))).warnings)
+    assert cli.main(["info", "--strict", str(src)]) == 3
+    assert cli.main(["info", "--strict", NEST]) == 0

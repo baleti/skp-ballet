@@ -182,10 +182,26 @@ def load(skp):
     import gc
     was = gc.isenabled(); gc.disable()
     try:
-        return _load_any(skp)
+        m = _load_any(skp)
+        _check_finite(m)
+        return m
     finally:
         if was:
             gc.enable()
+
+
+def _check_finite(m):
+    """Warn (damaged data) when a vertex or instance transform is NaN/inf or beyond 1e30: the file loads, but convert/cache refuse it,
+    so info (and --strict) must say so too instead of printing a plausible summary."""
+    for d in [m.root] + list(m.defs.values()):
+        if d is None:
+            continue
+        vals = (c for v in d.vertices.values() for c in v)
+        mats = (x for it in d.instances for x in it.get("matrix", ()))
+        for x in list(vals) + list(mats):
+            if isinstance(x, (int, float)) and not (-1e30 < x < 1e30):
+                m.warnings.append("model has non-finite or absurd coordinates or transforms (> 1e30): damaged data, convert and cache refuse it")
+                return
 
 
 def _load_any(skp):
