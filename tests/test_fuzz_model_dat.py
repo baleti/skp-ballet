@@ -340,3 +340,16 @@ def test_model_dat_tail_cuts_are_rejected_or_flagged(path):
         except container.SkpError:
             continue
         assert m.warnings, (path, cut)
+
+
+def test_tiling_guard_no_false_positive_and_flags_length_damage():
+    from skpballet.tlv import tiling_errors
+    class Fake2(container.SkpFile):
+        model_dat = None
+    for path in FILES:
+        sk = container.open_skp(path)
+        assert tiling_errors(sk.model_dat) == 0, path
+        assert not any("do not tile" in w for w in scene.load(sk).warnings), path
+    sk = container.open_skp(FILES[0]); good = bytearray(sk.model_dat)
+    good[6 + 2:6 + 6] = (0x7fffffff).to_bytes(4, "little")   # first child length absurd
+    assert tiling_errors(bytes(good)) >= 1

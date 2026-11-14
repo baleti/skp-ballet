@@ -74,3 +74,27 @@ def parse_tlv(data, start=0, end=None, depth=0):
             app(Node(tag, None, [], data, p + 6, q, depth))
         p = q
     return out
+
+
+def tiling_errors(data, max_depth=5):
+    """Count container nodes down to max_depth whose children do not tile the payload exactly (a child overruns the parent, or
+    bytes are left over). Intact public 2021+ fixtures give 0 down to depth 5; deeper levels (6) show overruns in intact files
+    (non-TLV payloads under a container tag), so they are not checked. Used as a 'damaged data' signal."""
+    n = 0
+    stack = [(0, len(data), 0)]
+    while stack:
+        s, e, depth = stack.pop()
+        p = s
+        while p + 6 <= e:
+            tag, ln = _HDR(data, p)
+            q = p + 6 + ln
+            if q > e:
+                n += 1
+                break
+            if ln and tag in CONTAINERS and depth < max_depth:
+                stack.append((p + 6, q, depth + 1))
+            p = q
+        else:
+            if p != e:
+                n += 1
+    return n

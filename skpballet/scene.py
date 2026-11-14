@@ -2,7 +2,7 @@
 import re
 import struct
 import xml.etree.ElementTree as ET
-from .tlv import parse_tlv
+from .tlv import parse_tlv, tiling_errors
 
 INCH = 0.0254  # SketchUp stores inches; we export metres
 
@@ -216,6 +216,9 @@ def _load(skp):
     top = parse_tlv(md)[0]
     if len(md) >= 6 and struct.unpack_from("<I", md, 2)[0] != len(md) - 6:   # holds on all public 2021+ fixtures
         model.warnings.append("model.dat: top record length does not match the stream size (%d bytes after it): extra or damaged data" % (len(md) - 6 - struct.unpack_from("<I", md, 2)[0]))
+    te = tiling_errors(md)
+    if te:
+        model.warnings.append("model.dat: %d record(s) whose length fields do not tile their parent (damaged data, geometry may be wrong or missing)" % te)
     xml = {}
     for n in skp.names():
         if n.startswith("styles/") and n.endswith(".xml"):
