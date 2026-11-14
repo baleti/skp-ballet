@@ -504,3 +504,26 @@ def test_instance_scale_term_sizes_and_positions_in_cache_glb(tmp_path):
     for lo, hi in ((la, ha), (lb, hb)):
         assert all(abs((h - l) - 0.0254) < 1e-6 for l, h in zip(lo, hi))
     assert abs((lb[0] - la[0]) - 0.508) < 1e-5
+
+
+@pytest.mark.parametrize("src", FILES, ids=os.path.basename)
+def test_meta_bbox_matches_glb_bbox(src, tmp_path):
+    """255: meta.json bbox (Z up: x, y, z) equals the union of GLB position accessor bounds (glTF Y up: x, z, -y)."""
+    import json
+    out = tmp_path / "c"
+    assert cli.main(["cache", src, str(out)]) == 0
+    meta = json.loads((out / "meta.json").read_text())
+    js, _ = _glb_json_bin((out / "model.glb").read_bytes())
+    mins, maxs = [], []
+    for m in js.get("meshes", []):
+        for p in m["primitives"]:
+            a = js["accessors"][p["attributes"]["POSITION"]]
+            mins.append(a["min"]); maxs.append(a["max"])
+    if not mins:
+        return
+    gl_lo = [min(x[c] for x in mins) for c in range(3)]
+    gl_hi = [max(x[c] for x in maxs) for c in range(3)]
+    lo = [gl_lo[0], -gl_hi[2], gl_lo[1]]
+    hi = [gl_hi[0], -gl_lo[2], gl_hi[1]]
+    for got, want in ((meta["bbox"][0], lo), (meta["bbox"][1], hi)):
+        assert all(abs(g - w) < 1e-5 + 1e-6 * abs(w) for g, w in zip(got, want)), (got, want)
