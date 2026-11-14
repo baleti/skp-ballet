@@ -122,7 +122,7 @@ def write_cache(model, outdir, name="model.skp", edges=False):
     bb = [[lo[0], -hi[2], lo[1]], [hi[0], -lo[2], hi[1]]] if batches and lo[0] < 1e29 else [[0, 0, 0], [0, 0, 0]]
     meta = dict(file=name, levels=[], grids=[], rooms=[], views=[], sheets=[], fidLabels={"mesh": "triangle mesh from the SketchUp file"}, phases=[],
                 defaultHidden=[], stamps={"reader": "skp-ballet", "viewer": "skp-ballet"}, phase="done", batches=bmeta, bbox=bb,
-                coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp")
+                coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp", warnings=list(model.warnings))
     with open(os.path.join(outdir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, separators=(",", ":"))
     with open(os.path.join(outdir, "materials.json"), "w", encoding="utf-8") as f:

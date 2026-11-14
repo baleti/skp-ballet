@@ -149,3 +149,18 @@ def test_strict_failure_writes_nothing_and_leaves_existing_output(tmp_path):
     cd = tmp_path / "cache"; cd.mkdir(); (cd / "model.glb").write_bytes(b"keep")
     assert cli.main(["cache", "--strict", str(bad), str(cd)]) == 3
     assert (cd / "model.glb").read_bytes() == b"keep" and os.listdir(cd) == ["model.glb"]
+
+
+def test_outputs_carry_the_warnings(tmp_path):
+    import json, struct
+    raw = open(os.path.join(os.path.dirname(__file__), "data", "legacy", "components.skp"), "rb").read(); n = len(raw)
+    bad = tmp_path / "bad.skp"; bad.write_bytes(raw[:n // 2] + bytes(n - n // 2))
+    assert cli.main(["convert", str(bad), str(tmp_path / "o.glb")]) == 0
+    d = (tmp_path / "o.glb").read_bytes(); ln = struct.unpack("<I", d[12:16])[0]
+    w = json.loads(d[20:20 + ln])["asset"]["extras"]["warnings"]
+    assert any("damaged data" in x for x in w)
+    assert cli.main(["cache", str(bad), str(tmp_path / "c")]) == 0
+    assert any("damaged data" in x for x in json.load(open(tmp_path / "c" / "meta.json"))["warnings"])
+    good = os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp")
+    assert cli.main(["cache", good, str(tmp_path / "g")]) == 0
+    assert json.load(open(tmp_path / "g" / "meta.json"))["warnings"] == []
