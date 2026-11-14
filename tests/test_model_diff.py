@@ -34,3 +34,13 @@ def test_cli_exit_codes(tmp_path, capsys):
     bad = tmp_path / "bad.skp"
     bad.write_bytes(b"junk")
     assert model_diff.main([p, str(bad)]) == 2
+
+
+def test_canon_tolerates_damaged_models_with_none_ids():
+    p = os.path.join(D, "nesting_2021.skp")
+    a = scene.load(container.open_skp(p))
+    b = scene.load(container.open_skp(p))
+    d = next(x for x in [b.root] + list(b.defs.values()) if x.vertices and x.edges)
+    d.edges[None] = (0, 1)
+    d.vertices[None] = (0.0, 0.0, 0.0)
+    assert model_diff.diff(a, b)[0].get("edge") == [0, 1]
