@@ -382,3 +382,17 @@ def test_absurd_vertex_coordinate_refused_by_convert_and_cache(tmp_path):
     assert cli.main(["convert", str(src), str(out)]) != 0 and not out.exists()
     assert cli.main(["cache", str(src), str(cdir)]) != 0
     assert not (cdir / "model.glb").exists()
+
+
+@pytest.mark.parametrize("val", [0x54, 0x7F])
+def test_absurd_instance_matrix_refused_by_convert_and_cache(val, tmp_path):
+    """Exponent byte of an instance transform patched (found by scan: nesting_2021 model.dat offset 6292): the file loads,
+    but convert and cache must refuse it (no GLB, no cache model.glb, no traceback)."""
+    good = bytearray(container.open_skp(NEST).model_dat)
+    good[6292] = val
+    src = tmp_path / "bad.skp"
+    src.write_bytes(_swap_member(lambda n: n == "model.dat", bytes(good)))
+    out = tmp_path / "o.glb"; cdir = tmp_path / "cache"
+    assert cli.main(["convert", str(src), str(out)]) != 0 and not out.exists()
+    assert cli.main(["cache", str(src), str(cdir)]) != 0
+    assert not (cdir / "model.glb").exists()
