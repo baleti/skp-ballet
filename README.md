@@ -80,4 +80,4 @@ Pure ASCII JSON, one object: `file` (base name), `version` (SketchUp file versio
 `counts` (`definitions`, `vertices`, `edges`, `faces`, `instances`, `materials`, `layers`),
 `layer_names`, `layers_flagged_off` (hidden layers; legacy flag is unverified), `groups`,
 `components`, `material_names`, `texts`, `annotations`, `bbox_m` (`[[minx,miny,minz],[maxx,maxy,maxz]]`
-in metres, or null when empty), `warnings` (strings raised while reading). Fields may be added; none are removed.
+in metres, in the glTF frame: Y up, i.e. model (x, z, -y); `meta.json` bbox of `cache` is Z up, or null when empty), `warnings` (strings raised while reading). Fields may be added; none are removed.

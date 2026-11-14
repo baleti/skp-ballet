@@ -527,3 +527,21 @@ def test_meta_bbox_matches_glb_bbox(src, tmp_path):
     hi = [gl_hi[0], -gl_lo[2], gl_hi[1]]
     for got, want in ((meta["bbox"][0], lo), (meta["bbox"][1], hi)):
         assert all(abs(g - w) < 1e-5 + 1e-6 * abs(w) for g, w in zip(got, want)), (got, want)
+
+
+@pytest.mark.parametrize("src", FILES, ids=os.path.basename)
+def test_info_bbox_equals_cache_meta_bbox(src, tmp_path, capsys):
+    """256: info --json bbox_m and cache meta.json bbox describe the same box (metres, float32 tolerance)."""
+    import json
+    assert cli.main(["info", "--json", src]) == 0
+    info = json.loads(capsys.readouterr().out)["bbox_m"]
+    assert cli.main(["cache", src, str(tmp_path / "c")]) == 0
+    meta = json.loads((tmp_path / "c" / "meta.json").read_text())["bbox"]
+    if info is None or not meta:
+        return
+    # info bbox_m is in the glTF frame (Y up: x, z, -y of the model); meta.json bbox is Z up (the model frame)
+    lo, hi = info
+    want = [[lo[0], -hi[2], lo[1]], [hi[0], -lo[2], hi[1]]]
+    # info counts edges too, cache triangles only: the cache box lies inside the info box, equal when edges add nothing
+    t = 1e-5
+    assert all(g >= w - t for g, w in zip(meta[0], want[0])) and all(g <= w + t for g, w in zip(meta[1], want[1])), (info, meta)
