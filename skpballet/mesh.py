@@ -420,12 +420,27 @@ def _check_coords(vals):
 import contextlib
 
 
+def _sweep_stale_tmp(d, max_age=86400):
+    """A process killed mid-write leaves .skpballet-*.tmp behind (the target itself stays intact). Remove our own files of that
+    pattern when older than a day, so they do not accumulate next to the user's models; nothing else is touched."""
+    import os, time
+    try:
+        for n in os.listdir(d):
+            if n.startswith(".skpballet-") and n.endswith(".tmp"):
+                p = os.path.join(d, n)
+                if os.path.isfile(p) and not os.path.islink(p) and time.time() - os.path.getmtime(p) > max_age:
+                    os.unlink(p)
+    except OSError:
+        pass
+
+
 @contextlib.contextmanager
 def atomic_open(path, mode="wb", **kw):
     """Write to a temp file in the same directory, then os.replace onto path. Replaces a symlink at path instead of writing
     THROUGH it (a link to a source .skp must never be overwritten) and leaves an existing file intact if the write fails."""
     import os, tempfile
     d = os.path.dirname(os.path.abspath(path))
+    _sweep_stale_tmp(d)
     fd, tmp = tempfile.mkstemp(prefix=".skpballet-", suffix=".tmp", dir=d)
     try:
         with os.fdopen(fd, mode, **kw) as f:

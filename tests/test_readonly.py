@@ -351,3 +351,15 @@ def test_info_survives_a_legacy_console_encoding(monkeypatch):
     buf = io.BytesIO(); monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(buf, encoding="cp1252", errors="strict"))
     assert cli.main(["info", "f"]) == 0
     sys.stdout.flush(); assert b"Stuhl" in buf.getvalue()
+
+
+def test_stale_temp_files_are_swept_but_fresh_and_foreign_files_stay(tmp_path):
+    import time
+    from skpballet import mesh
+    old = tmp_path / ".skpballet-old.tmp"; new = tmp_path / ".skpballet-new.tmp"; other = tmp_path / "keep.tmp"; mine = tmp_path / "x.txt"
+    for f in (old, new, other):
+        f.write_bytes(b"1")
+    t = time.time() - 2 * 86400; os.utime(old, (t, t)); os.utime(other, (t, t))
+    with mesh.atomic_open(str(mine), "wb") as f:
+        f.write(b"ok")
+    assert not old.exists() and new.exists() and other.exists() and mine.read_bytes() == b"ok"
