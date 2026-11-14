@@ -192,3 +192,13 @@ def test_legacy_zero_filled_tail_is_flagged_and_intact_fixtures_are_not(tmp_path
         raw = open(os.path.join(d, nm + ".skp"), "rb").read(); n = len(raw)
         p = tmp_path / "z.skp"; p.write_bytes(raw[:n - n // 2] + b"\x00" * (n // 2))
         assert any("zero bytes" in w and "damaged data" in w for w in scene.load(container.open_skp(str(p))).warnings), nm
+
+
+def test_legacy_ff_block_is_flagged_and_intact_fixtures_are_not(tmp_path):
+    from skpballet import container, scene
+    d = os.path.join(os.path.dirname(__file__), "data", "legacy")
+    raw = open(os.path.join(d, "nesting_2017.skp"), "rb").read()
+    p = tmp_path / "f.skp"; p.write_bytes(raw[:3000] + b"\xff" * 64 + raw[3064:])
+    assert any("0xFF bytes" in w and "damaged data" in w for w in scene.load(container.open_skp(str(p))).warnings)
+    for nm in sorted(os.listdir(d)):
+        assert not any("0xFF bytes" in w for w in scene.load(container.open_skp(os.path.join(d, nm))).warnings), nm

@@ -497,6 +497,10 @@ def load_legacy(skp):
     if zr:   # longest zero run in 29 intact public legacy files is 71 bytes; a long run means zero-filled (damaged) data
         m.warnings.append("legacy file has a run of %d zero bytes (longest in intact public files: 71): damaged data, geometry may be "
                           "missing or partial" % zr)
+    fr = max((len(z.group()) for z in re.finditer(rb"\xff{64,}", skp.data)), default=0)
+    if fr:   # no run of even 8 consecutive 0xFF bytes exists in 29 intact public legacy files
+        m.warnings.append("legacy file has a run of %d 0xFF bytes (none in intact public files): damaged data, geometry may be "
+                          "missing or partial" % fr)
     if 6 <= _major(skp.version) <= 16 and _major(skp.version) != 13:
         m.warnings.append("legacy file is SketchUp version %s: UNTESTED version (no public fixture exists for versions 6-12 and 14-16; "
                           "record layout assumed from neighbouring versions, geometry may be wrong or partial)" % _major(skp.version))
