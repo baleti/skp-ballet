@@ -373,3 +373,9 @@ never rely on "the reader did not complain" for legacy files; a legacy file with
 Appending bytes does not change any decoded count (29/29 unchanged in every case). Strict-flagged / silent: +1 zero byte 4/25,
 +16 zeros 4/25, +4 0xFF 27/2, +70 garbage 27/2, +4096 zeros 22/7. Appended trailing data is therefore mostly invisible to the
 reader; a writer must treat unknown trailing bytes as data to preserve verbatim, not as noise.
+
+### Legacy interior bit flips (measured 2026-11-14, 29 fixtures x 20 random single-bit flips, seed 11, compared by GLB sha256)
+540 no effect on the decoded output, 22 changed output WITH a strict-level warning, 11 changed output SILENTLY (1.9 percent of
+all flips, 33 percent of flips that mattered), 7 rejected, 0 hangs, 0 unexpected exception types. By decoded counts alone only 3 of
+870 flips looked silent, because most silent changes move coordinates. The legacy container has no integrity field, so a damaged
+but parseable file is accepted; a writer must never "repair" or re-emit a legacy file it has only read.
