@@ -400,3 +400,18 @@ def test_info_json_matches_documented_schema(src, capsys):
     assert KEYS <= set(d) and COUNTS <= set(d["counts"])
     bb = d["bbox_m"]
     assert bb is None or (len(bb) == 2 and all(len(p) == 3 for p in bb))
+
+
+def test_empty_model_glb_obeys_gltf_minitems(tmp_path):
+    """244: no empty meshes/materials/accessors/bufferViews arrays, no zero-length buffer or BIN chunk."""
+    import json, struct
+    src = os.path.join(os.path.dirname(__file__), "data", "legacy", "legacy_empty_2020.skp")
+    out = str(tmp_path / "o.glb")
+    assert cli.main(["convert", src, out]) == 0
+    b = open(out, "rb").read()
+    assert struct.unpack("<I", b[8:12])[0] == len(b)
+    n = struct.unpack("<I", b[12:16])[0]
+    js = json.loads(b[20:20 + n])
+    for k in ("meshes", "materials", "accessors", "bufferViews", "buffers"):
+        assert k not in js
+    assert "mesh" not in js["nodes"][0] and len(b) == 20 + n

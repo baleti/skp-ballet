@@ -511,13 +511,18 @@ def write_glb(model, path, edges=True, strict=False):
                                                                  metallicFactor=0, roughnessFactor=1)))
         prims.append(dict(attributes=dict(POSITION=len(accs) - 1), material=len(mats) - 1, mode=1))
     js = dict(asset=dict(version="2.0", generator="skp-ballet", extras=dict(layers=sorted(model.layers.values()), layers_flagged_off=sorted(model.layers[i] for i in model.layers_off if i in model.layers), materials=len(model.materials), warnings=list(model.warnings))), scene=0, scenes=[dict(nodes=[0])],
-              nodes=[dict(mesh=0, name="model")], meshes=[dict(primitives=prims)] if prims else [dict(primitives=[])],
-              materials=mats, accessors=accs, bufferViews=views, buffers=[dict(byteLength=len(bin_))])
+              nodes=[dict(mesh=0, name="model") if prims else dict(name="model")])
+    # glTF 2.0 schema: arrays have minItems 1 and buffer byteLength >= 1, so an empty model omits them
+    for k, v in (("meshes", [dict(primitives=prims)] if prims else []), ("materials", mats), ("accessors", accs),
+                 ("bufferViews", views), ("buffers", [dict(byteLength=len(bin_))] if bin_ else [])):
+        if v:
+            js[k] = v
     j = json.dumps(js, separators=(",", ":")).encode()
     j += b" " * (-len(j) % 4)
     bin_ += b"\0" * (-len(bin_) % 4)
     with atomic_open(path, "wb") as f:
-        f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(j) + 8 + len(bin_)))
+        f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(j) + (8 + len(bin_) if bin_ else 0)))
         f.write(struct.pack("<I4s", len(j), b"JSON") + j)
-        f.write(struct.pack("<I4s", len(bin_), b"BIN\0") + bytes(bin_))
+        if bin_:
+            f.write(struct.pack("<I4s", len(bin_), b"BIN\0") + bytes(bin_))
     return sum(len(b) // 9 for b in res.values())
