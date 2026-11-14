@@ -237,3 +237,12 @@ def test_outputs_never_write_through_symlinks_to_the_source(tmp_path):
     out = tmp_path / "o.glb"; os.symlink(src, out)
     cli.main(["convert", str(src), str(out)])
     assert hashlib.sha256(src.read_bytes()).hexdigest() == before
+
+
+def test_safe_join_blocks_symlinks_leaving_the_vendor_dir(tmp_path):
+    from skpballet.cli import safe_join
+    v = tmp_path / "v"; v.mkdir(); (tmp_path / "secret").write_text("s"); (v / "ok.js").write_text("x")
+    os.symlink(tmp_path / "secret", v / "l.js"); os.symlink(tmp_path, v / "up")
+    assert os.path.exists(safe_join(str(v), "ok.js"))
+    for p in ("l.js", "up/secret", "../secret", "%2e%2e/secret", "..%2fsecret"):
+        assert not os.path.exists(safe_join(str(v), p)), p
