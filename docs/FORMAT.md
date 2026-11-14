@@ -368,3 +368,8 @@ N=16: 5/24, N=64 and N=256: 27/2. At 90, 95 and 99 percent every fixture carries
 but only the cases above reach the strict triggers. The last ~16 to 40 bytes are zero padding or flag words (7 distinct endings in
 29 files), so a cut there loses no geometry but also cannot be told from an intact file. Consequence for any future writer: it must
 never rely on "the reader did not complain" for legacy files; a legacy file without a verified end structure is read-only.
+
+### Legacy appended bytes (measured 2026-11-14, 29 fixtures)
+Appending bytes does not change any decoded count (29/29 unchanged in every case). Strict-flagged / silent: +1 zero byte 4/25,
++16 zeros 4/25, +4 0xFF 27/2, +70 garbage 27/2, +4096 zeros 22/7. Appended trailing data is therefore mostly invisible to the
+reader; a writer must treat unknown trailing bytes as data to preserve verbatim, not as noise.
