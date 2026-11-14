@@ -164,3 +164,22 @@ def test_outputs_carry_the_warnings(tmp_path):
     good = os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp")
     assert cli.main(["cache", good, str(tmp_path / "g")]) == 0
     assert json.load(open(tmp_path / "g" / "meta.json"))["warnings"] == []
+
+
+def test_legacy_plane_misfit_is_warned(tmp_path):
+    import glob, os, struct
+    from skpballet.container import open_skp
+    from skpballet.scene import load as load_model
+    src = os.path.join(os.path.dirname(__file__), "data", "legacy", "uv_positioning.skp")
+    raw = open(src, "rb").read()
+    def warns(b):
+        p = tmp_path / "x.skp"; p.write_bytes(b)
+        return [w for w in load_model(open_skp(str(p))).warnings if "stored plane" in w]
+    assert warns(raw) == []
+    pat = struct.pack("<4d", 0.0, 0.0, 1.0, -5.0)
+    assert pat in raw
+    bad = raw.replace(pat, struct.pack("<4d", 0.0, 0.0, 1.0, -6.0), 1)
+    assert warns(bad) and "damaged data" in warns(bad)[0]
+    # normal flipped to disagree with the loop
+    flipped = raw.replace(pat, struct.pack("<4d", 0.0, 0.0, -1.0, 5.0), 1)
+    assert warns(flipped)

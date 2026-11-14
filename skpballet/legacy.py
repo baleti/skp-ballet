@@ -249,6 +249,7 @@ def scan_faces(data, info=None, version=""):
         out.append(ls)
     if info is not None:
         info["face_matslots"] = fm; info["face_layerrefs"] = fl
+        info["plane_misfit"] = _plane_misfits(faces)
         try:
             info["edges"] = _list_geometry(best)[2]
         except (TypeError, IndexError, ValueError):
@@ -420,6 +421,25 @@ def scan_instances(data):
     return out
 
 
+def _plane_misfits(faces):
+    """Count faces whose stored plane (a,b,c,d) fits neither n.p+d=0 nor n.p-d=0 on the outer loop, or whose normal
+    disagrees with the loop (Newell). The sign of d is not uniform across public files (item 197), so either sign passes."""
+    bad = 0
+    for _, plane, loops, _, _ in faces:
+        pts = [(e[1] if sn == 0 else e[2])[1:] for _, e, sn in loops[0][1]] if loops else []
+        nn = _newell(pts) if len(pts) >= 3 else None
+        ln = sum(c * c for c in plane[:3]) ** 0.5
+        if nn is None or not ln or ln != ln:
+            continue
+        m = sum(c * c for c in nn) ** 0.5
+        a, b, c, d = (x / ln for x in plane)
+        tol = 1e-6 * (1 + max(abs(v) for p in pts for v in p))
+        res = [max(abs(a * p[0] + b * p[1] + c * p[2] + sg * d) for p in pts) for sg in (1, -1)]
+        if min(res) > tol or (a * nn[0] + b * nn[1] + c * nn[2]) / m < 0.999:
+            bad += 1
+    return bad
+
+
 def _newell(pts):
     """Face normal from the outer loop (Newell); None when degenerate so callers keep their default."""
     x = y = z = 0.0
@@ -501,6 +521,8 @@ def load_legacy(skp):
     if fr:   # no run of even 8 consecutive 0xFF bytes exists in 29 intact public legacy files
         m.warnings.append("legacy file has a run of %d 0xFF bytes (none in intact public files): damaged data, geometry may be "
                           "missing or partial" % fr)
+    if inf.get("plane_misfit"):
+        m.warnings.append("legacy file: %d face(s) whose stored plane disagrees with the loop geometry: damaged data" % inf["plane_misfit"])
     if 6 <= _major(skp.version) <= 16 and _major(skp.version) != 13:
         m.warnings.append("legacy file is SketchUp version %s: UNTESTED version (no public fixture exists for versions 6-12 and 14-16; "
                           "record layout assumed from neighbouring versions, geometry may be wrong or partial)" % _major(skp.version))
