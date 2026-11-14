@@ -62,6 +62,33 @@ def _read_regular(path):
         os.close(fd)
 
 
+def _open_zip(data, z):
+    """zipfile trusts the LAST end record; trailing junk holding a fake one would make a good file unreadable.
+    On failure retry with each earlier end record, truncating the data right after it (its length is then noted as bytes after the archive)."""
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data[z:]))
+        zf._skp_eocd = data.rfind(b"PK\x05\x06")
+        if zf.namelist():
+            return zf
+        first = zipfile.BadZipFile("zip archive holds no members")   # a fake end record can parse as an empty archive
+    except zipfile.BadZipFile as e1:
+        first = e1
+    e = data.rfind(b"PK\x05\x06")
+    while e > z:
+        e = data.rfind(b"PK\x05\x06", z, e)
+        if e < 0:
+            break
+        try:
+            clen = struct.unpack_from("<H", data, e + 20)[0]
+            zf = zipfile.ZipFile(io.BytesIO(data[z:e + 22 + clen]))
+            zf._skp_eocd = e
+            if zf.namelist():
+                return zf
+        except (zipfile.BadZipFile, struct.error):
+            continue
+    raise first
+
+
 def open_skp(src):
     """src: path or bytes. Raises ValueError for non-SKP or pre-2021 (MFC archive) files."""
     if isinstance(src, (bytes, bytearray)):
@@ -79,12 +106,12 @@ def open_skp(src):
     m = re.search(rb"\{\x00((?:[0-9]\x00|\.\x00)+)\}\x00", data[:z])
     ver = m.group(1).decode("utf-16-le") if m else "unknown"
     try:
-        zf = zipfile.ZipFile(io.BytesIO(data[z:]))
+        zf = _open_zip(data, z)
         names = zf.namelist()
         if len(names) != len(set(names)):   # zipfile silently keeps the LAST of two equal names
             raise SkpError("corrupt container: duplicate zip member names")
         sk = SkpFile(ver, zf)
-        eocd = data.rfind(b"PK\x05\x06")
+        eocd = zf._skp_eocd
         sk.container_notes = []
         if eocd >= 0 and len(data) >= eocd + 22:
             n_decl, c_decl = struct.unpack_from("<H", data, eocd + 10)[0], struct.unpack_from("<H", data, eocd + 20)[0]

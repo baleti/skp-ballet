@@ -606,3 +606,17 @@ def test_lying_zip_end_record_is_warned(field, val, needle, tmp_path, capsys):
     f.write_bytes(bytes(b))
     assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 0
     assert needle in capsys.readouterr().out
+
+
+def test_fake_end_record_after_the_zip_does_not_hide_a_good_archive(tmp_path, capsys):
+    """261: junk after the archive that contains a fake end record: the file still loads, with the extra bytes reported."""
+    src = os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp")
+    b = open(src, "rb").read()
+    f = tmp_path / "d.skp"
+    f.write_bytes(b + b"junk" + b"PK\x05\x06" + b"\0" * 18)
+    assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 0
+    out = capsys.readouterr().out
+    assert "bytes after the end of the zip archive" in out
+    assert (tmp_path / "o.glb").read_bytes()[:4] == b"glTF"
+    assert cli.main(["convert", src, str(tmp_path / "ref.glb")]) == 0
+    assert _glb_json_bin((tmp_path / "o.glb").read_bytes())[1] == _glb_json_bin((tmp_path / "ref.glb").read_bytes())[1]
