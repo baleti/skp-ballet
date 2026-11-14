@@ -334,6 +334,7 @@ def definition_tris(d):
     return out
 
 
+MAX_TRIS = 5_000_000   # triangles emitted per export (flatten and cache)
 MAX_PLACEMENTS = 500_000   # instance placements walked per export; an instance bomb (8 instances x 12 levels = 8^12) never finishes otherwise
 
 
@@ -343,10 +344,11 @@ def _budget_warning(model, n):
         model.warnings.append(msg)
 
 
-def flatten(model, max_depth=24, max_tris=5_000_000, lines=None):
+def flatten(model, max_depth=24, max_tris=None, lines=None):
     """Returns {mat_id: flat list of floats (x,y,z per vertex, metres, Y-up)}.
     If `lines` is a list, edge segments (6 floats each, same space) are appended to it."""
     cache, res, count = {}, {}, [0]
+    max_tris = MAX_TRIS if max_tris is None else max_tris
     nodes = [0]
 
     def emit(tris_by_mat, m):

@@ -32,6 +32,7 @@ def build(model, max_depth=24, edges=False):
 
     cache = {}
     nodes = [0]
+    tot = [0]   # triangles emitted so far
     for ei, (name, cls, cat, d0, m0, sub_only) in enumerate(_elements(model)):
         def walk(d, m, depth, top):
             nodes[0] += 1
@@ -39,6 +40,11 @@ def build(model, max_depth=24, edges=False):
                 mesh._budget_warning(model, mesh.MAX_PLACEMENTS)
                 return
             if depth > max_depth:
+                return
+            if tot[0] > mesh.MAX_TRIS:   # same 5M triangle cap as mesh.flatten: bounded memory
+                msg = "triangle limit (%d) reached: the rest is NOT placed" % mesh.MAX_TRIS
+                if msg not in model.warnings:
+                    model.warnings.append(msg)
                 return
             if d.id not in cache:
                 cache[d.id] = mesh.definition_tris(d)
@@ -55,6 +61,7 @@ def build(model, max_depth=24, edges=False):
                     b["idx"].extend((b["nv"], b["nv"] + 1, b["nv"] + 2))
                     b["nv"] += 3
                     b["nt"] += 1
+                    tot[0] += 1
                 if b["nt"] > start:
                     b["ranges"].extend((ei, start, b["nt"] - start))
             segs = [(d.vertices[a], d.vertices[c]) for a, c in d.edges.values() if a in d.vertices and c in d.vertices]

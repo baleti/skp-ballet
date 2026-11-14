@@ -296,3 +296,16 @@ def test_instance_bomb_is_budgeted_and_reported(tmp_path, monkeypatch):
     assert any("NOT placed" in w for w in json.loads(raw[20:20 + jl])["asset"]["extras"]["warnings"])
     m = bomb(); cache.write_cache(m, str(tmp_path / "c"), "x.skp")
     assert any("NOT placed" in w for w in json.loads((tmp_path / "c" / "meta.json").read_text())["warnings"])
+
+
+def test_cache_has_a_triangle_cap_like_flatten(tmp_path, monkeypatch):
+    import json
+    from skpballet import mesh, cache, scene
+    monkeypatch.setattr(mesh, "MAX_TRIS", 50)
+    m = scene.Model(); m.root = scene.Definition(-1, "root")
+    d = scene.Definition(0, "d"); d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]; m.defs[0] = d
+    m.root.instances = [dict(def_id=0, matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1, j, 0, 0, 1], name="c", id=None) for j in range(500)]
+    cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    meta = json.loads((tmp_path / "c" / "meta.json").read_text())
+    assert sum(b["tris"] for b in meta["batches"]) <= 60 and any("NOT placed" in w for w in meta["warnings"])
