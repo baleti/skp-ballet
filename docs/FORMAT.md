@@ -391,3 +391,8 @@ Public fixture image.skp holds a root face of 10x10 in at the origin and one hid
 of a definition `Image0` that has its own 48x36 in face. The first entity list in the file is the IMAGE definition's, and the
 reader shows it as the model (48x36 face) while the root's 10x10 face is not read. Now warned ("the image's own face"), which
 triggers `--strict` together with the existing CImage "NOT read" warning. Not fixed: needs the root list located without a tree.
+Follow-up (2026-11-14): the root list of image.skp starts at offset 4840 with count 6 and its FIRST object is a CImage (class
+declared there); `scan_lists` stops because `_R.obj()` raises "unsupported class CImage" for every slot offset, so the root's
+10x10 in face (doubles 10.0 at 5044..) is never reached. Visible in the CImage record: a 13-double transform-like block (1.0
+diagonal, 40.0 translation), a 16-byte GUID (10 11 12 .. 1f with 2 bytes differing), then the next objects; its total length
+is not pinned yet, so it cannot be skipped safely.
