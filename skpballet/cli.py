@@ -191,5 +191,5 @@ def main(argv=None):
             return 1
         return serve(glb, ns.port, not ns.no_browser)
     except (ValueError, OSError) as e:
-        print("skp-ballet: %s" % e, file=sys.stderr)
+        print("skp-ballet: %s" % _clean(str(e)), file=sys.stderr)
         return 2
