@@ -125,3 +125,13 @@ def test_legacy_multiple_lists_with_rejected_tree_warns(monkeypatch):
     monkeypatch.setattr(legacy, "legacy_tree", lambda *a, **k: None)
     m = scene.load(container.open_skp(f))
     assert any("definition tree was rejected" in w and "NOT read" in w for w in m.warnings), m.warnings
+
+
+def test_legacy_untested_versions_6_to_12_warn(monkeypatch, capsys):
+    from skpballet import container, legacy, scene
+    f = os.path.join(os.path.dirname(__file__), "data", "legacy", "components.skp")
+    assert not any("UNTESTED" in w for w in scene.load(container.open_skp(f)).warnings)
+    real = container.open_skp(f)
+    for major, expect in ((5, False), (6, True), (9, True), (12, True), (13, False)):
+        real.version = "%d.0.1" % major
+        assert any("UNTESTED" in w for w in legacy.load_legacy(real).warnings) == expect, major

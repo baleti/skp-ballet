@@ -158,7 +158,7 @@ def main(argv=None):
             info_json(ns.file)
             return 0
         m = info(ns.file)
-        if ns.strict and any("TRUNCATED" in w or "INCOMPLETE" in w or "NOT placed" in w or "NOT read" in w or "damaged data" in w for w in m.warnings):
+        if ns.strict and any("TRUNCATED" in w or "INCOMPLETE" in w or "NOT placed" in w or "NOT read" in w or "damaged data" in w or "UNTESTED" in w for w in m.warnings):
             print("skp-ballet: --strict: model may be partial, see warnings above", file=sys.stderr)
             return 3
         if cmd == "info":
