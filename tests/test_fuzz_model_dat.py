@@ -319,3 +319,24 @@ def test_unsupported_member_flags_give_clean_error(what):
         struct.pack_into("<H", d, p + 10, 99 if what == "method99" else 12)
     with pytest.raises(container.SkpError):
         scene.load(container.open_skp(bytes(d)))
+
+
+@pytest.mark.parametrize("path", FILES, ids=os.path.basename)
+def test_model_dat_tail_cuts_are_rejected_or_flagged(path):
+    sk = container.open_skp(path)
+    md = sk.model_dat
+
+    class Cut(container.SkpFile):
+        def __init__(self, data):
+            self.version, self.zip, self.container_notes, self._d = sk.version, sk.zip, [], data
+
+        @property
+        def model_dat(self):
+            return self._d
+
+    for cut in (1, 2, 4, 8, 16, 64):
+        try:
+            m = scene.load(Cut(md[:-cut]))
+        except container.SkpError:
+            continue
+        assert m.warnings, (path, cut)
