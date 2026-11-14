@@ -9,6 +9,7 @@ Read SketchUp `.skp` files (sibling of rvt-ballet). Pure Python, no SDK, MIT.
 
 The tool never writes a .skp: convert/cache refuse an output that is the input or ends in `.skp`; a model without
 triangles does not start the viewer (exit 1). `--layers` marks layers whose flag 0x3C8E is 1 as `[off]` (meaning unverified).
+All outputs are written to a temp file and moved into place (os.replace), so a symlink or hard link at an output path is replaced and never followed into a source file, and a failed write leaves the previous output intact. The three cache files are replaced one by one: use one writer per cache directory.
 
 Status (read only): SketchUp 2021+ files (zip container with `model.dat`). Lists definitions
 (components/groups), vertices, edges, faces, instances, materials, layers; exports a triangulated
