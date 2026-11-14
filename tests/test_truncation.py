@@ -180,3 +180,15 @@ def test_v13_mid_file_cut_is_flagged_but_intact_file_is_not(tmp_path):
         return any("TRUNCATED" in w for w in scene.load(container.open_skp(str(p))).warnings)
     assert not warned(raw)
     assert warned(raw[:len(raw) * 7 // 10]) and warned(raw[:len(raw) // 2])
+
+
+def test_legacy_zero_filled_tail_is_flagged_and_intact_fixtures_are_not(tmp_path):
+    """Zero-filling the last half of components/edge_flags/image used to load with lost geometry and no strict trigger."""
+    from skpballet import container, scene
+    d = os.path.join(os.path.dirname(__file__), "data", "legacy")
+    for nm in sorted(os.listdir(d)):
+        assert not any("zero bytes" in w for w in scene.load(container.open_skp(os.path.join(d, nm))).warnings), nm
+    for nm in ("components", "edge_flags", "image"):
+        raw = open(os.path.join(d, nm + ".skp"), "rb").read(); n = len(raw)
+        p = tmp_path / "z.skp"; p.write_bytes(raw[:n - n // 2] + b"\x00" * (n // 2))
+        assert any("zero bytes" in w and "damaged data" in w for w in scene.load(container.open_skp(str(p))).warnings), nm
