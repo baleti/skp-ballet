@@ -396,6 +396,10 @@ canon): 1024 no effect, 166 warned, 1 rejected, 309 silent (20.6 percent). Silen
 annotation 19, layer 12, def 7, text 7, multi-section 6, 9 differ only in line multiplicity. As in legacy, silent damage is value damage (coordinates,
 ids, transforms); the zip CRC does not protect the DECOMPRESSED stream if a writer re-deflates it, so a gate must compare decoded content.
 
+Size of the silent 2021+ coordinate changes (same flips, 77 flips changed a vertex with no warning): shift relative to the model extent is <= 1e-9 in 57,
+<= 1e-6 in 62, <= 1e-3 in 68, <= 0.1 in 73, <= 1 in 75, 1 reached 1e75 (finite, not caught). 74 percent are low-mantissa flips below any visible effect,
+so a plausibility guard on magnitude would catch about 1 of 77 (2 or 3 with a 'larger than 10 x extent' rule); it cannot replace the content diff.
+
 ### image.skp: first entity list is the image definition (found 2026-11-14 by cross-check with openskp)
 Public fixture image.skp holds a root face of 10x10 in at the origin and one hidden instance (rotated 90 degrees about X, moved 40 in)
 of a definition `Image0` that has its own 48x36 in face. The first entity list in the file is the IMAGE definition's, and the
