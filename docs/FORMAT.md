@@ -460,3 +460,10 @@ ones: vertex or definition coordinate changed (111 of the 132 classified by deco
 A magnitude/finiteness guard on coordinates (intact public maximum |coord| 108 inches) would flag only 1 of the 23 silent cases whose bounding
 extent changed (flips that matter land in the mantissa, not the exponent). Not implemented. Value damage inside a record is undetectable
 on read without a checksum; a writer's check must compare decoded content with the intended edit.
+
+### Export limits (measured 2026-11-14)
+`mesh.MAX_PLACEMENTS` 500,000 instance placements and `mesh.MAX_TRIS` 5,000,000 triangles per export (flatten and cache); beyond either the walk
+stops with a "NOT placed" warning (GLB extras, cache meta, `--strict` exit 3 for info-time checks). Cost: about 150 us per placement of a
+12-triangle definition and 0.56 KB peak RSS per triangle (960k triangles: 541 MB, 12 s, 32 MB GLB), so the triangle cap projects to about 2.8 GB
+and a 160 MB GLB; a 500k-placement instance bomb takes 20 to 31 s and under 0.6 GB. Inputs: regular files only, at most 4 GiB; zip members declaring
+more than 2 GiB are refused. The limits are guesses from fixtures, not from large real models; a legitimate larger model is truncated WITH a warning.
