@@ -72,15 +72,15 @@ def open_skp(src):
         if mv and ver != "unknown" and mv.group(1).decode() != ver:
             sk.container_notes.append("header version %s differs from meta/meta.dat version %s" % (ver, mv.group(1).decode()))
         if "meta/meta.dat" not in names:
-            sk.container_notes.append("required member meta/meta.dat is missing (extra or damaged data)")
+            sk.container_notes.append("required member meta/meta.dat is missing")
         if not any(n.startswith("styles/") and n.endswith(".xml") for n in names):
-            sk.container_notes.append("no styles/*.xml member (extra or damaged data)")
+            sk.container_notes.append("no styles/*.xml member")
         try:
             bad = zf.testzip()
         except (zipfile.BadZipFile, zlib.error, OSError, EOFError, NotImplementedError):
             bad = "?"
         if bad:
-            sk.container_notes.append("zip member %s fails its CRC check (damaged data)" % bad)
+            sk.container_notes.append("zip member %s fails its CRC check" % bad)
         if zf.comment:
             sk.container_notes.append("zip comment present (%d bytes)" % len(zf.comment))
         return sk

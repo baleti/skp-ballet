@@ -226,3 +226,16 @@ def test_missing_meta_dat_and_styles_warn_and_intact_does_not():
 def test_stored_member_crc_failure_warns():
     m = scene.load(container.open_skp(_rezip(NEST, flip_member=b"meta/meta.dat")))
     assert any("CRC" in w for w in m.warnings), m.warnings
+
+
+def test_unparseable_material_xml_warns():
+    import io, zipfile
+    d = open(NEST, "rb").read()
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    src = zipfile.ZipFile(io.BytesIO(d[z:]))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as w:
+        for i in src.infolist():
+            w.writestr(i.filename, b"<broken" if i.filename.endswith("material.xml") else src.read(i.filename))
+    m = scene.load(container.open_skp(d[:z] + out.getvalue()))
+    assert any("not well-formed" in w for w in m.warnings), m.warnings

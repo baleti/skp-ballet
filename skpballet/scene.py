@@ -225,8 +225,10 @@ def _load(skp):
                 xml[m.group(1)] = (int(el.get("colorRed")), int(el.get("colorGreen")),
                                    int(el.get("colorBlue")), int(el.get("useTrans", "0")),
                                    int(el.get("trans", "0")))
+            except ET.ParseError:
+                model.warnings.append("materials: %s is not well-formed XML (extra or damaged data)" % n)
             except Exception:
-                pass
+                pass   # layer material.xml files have no <material> element; not an error
     for lst in top.find(0x1F7):
       for l2 in lst.find(0x30D4):
         for e in l2.find(0x30D5):
