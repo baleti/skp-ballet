@@ -115,7 +115,8 @@ def write_cache(model, outdir, name="model.skp", edges=False, strict=False):
         if not b["idx"]:
             continue
         pos = b["pos"]
-        mn = [min(pos[i::3]) for i in range(3)]; mx = [max(pos[i::3]) for i in range(3)]
+        _p32 = struct.unpack("<%df" % len(pos), struct.pack("<%df" % len(pos), *pos))   # min/max of the stored float32 values
+        mn = [min(_p32[i::3]) for i in range(3)]; mx = [max(_p32[i::3]) for i in range(3)]
         lo = [min(a, c) for a, c in zip(lo, mn)]; hi = [max(a, c) for a, c in zip(hi, mx)]
         mt = mats[midx.get(mat, 0)] if kind == "tri" else dict(name="edges", rgb=[13, 13, 13], alpha=1.0)
         label = mt["name"] + ("" if kind == "tri" else " (lines)")

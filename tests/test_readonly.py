@@ -426,3 +426,54 @@ def test_cache_and_convert_are_deterministic(src, tmp_path):
     for name in os.listdir(tmp_path / "a"):
         assert (tmp_path / "a" / name).read_bytes() == (tmp_path / "b" / name).read_bytes(), name
     assert (tmp_path / "a.glb").read_bytes() == (tmp_path / "b.glb").read_bytes()
+
+
+def _glb_json_bin(b):
+    import json, struct
+    n = struct.unpack("<I", b[12:16])[0]
+    js = json.loads(b[20:20 + n])
+    binb = b[28 + n:28 + n + struct.unpack("<I", b[20 + n:24 + n])[0]] if len(b) > 20 + n else b""
+    return js, binb
+
+
+@pytest.mark.parametrize("src", FILES, ids=os.path.basename)
+def test_glb_accessors_bounds_and_indices_valid(src, tmp_path):
+    """246: own validator: bufferViews inside the BIN chunk, accessor min/max match data, indices in range."""
+    import struct
+    out = str(tmp_path / "o.glb")
+    assert cli.main(["convert", src, out]) == 0
+    js, binb = _glb_json_bin(open(out, "rb").read())
+    for v in js.get("bufferViews", []):
+        assert v["byteOffset"] + v["byteLength"] <= len(binb)
+    sizes = {5126: ("f", 4), 5125: ("I", 4), 5123: ("H", 2)}
+    ncomp = {"SCALAR": 1, "VEC3": 3}
+    data = []
+    for a in js.get("accessors", []):
+        v = js["bufferViews"][a["bufferView"]]
+        fmt, sz = sizes[a["componentType"]]
+        k = ncomp[a["type"]]
+        vals = struct.unpack("<%d%s" % (a["count"] * k, fmt), binb[v["byteOffset"]:v["byteOffset"] + a["count"] * k * sz])
+        data.append(vals)
+        if a["componentType"] == 5126:
+            assert all(x == x and abs(x) < 1e30 for x in vals)
+            if "min" in a:
+                for c in range(k):
+                    seg = vals[c::k]
+                    assert min(seg) == a["min"][c] and max(seg) == a["max"][c]
+    for m in js.get("meshes", []):
+        for p in m["primitives"]:
+            npos = js["accessors"][p["attributes"]["POSITION"]]["count"]
+            if "indices" in p:
+                assert all(i < npos for i in data[p["indices"]])
+
+
+@pytest.mark.parametrize("src", FILES[:8], ids=os.path.basename)
+def test_cache_glb_accessor_minmax_match_float32(src, tmp_path):
+    import struct
+    assert cli.main(["cache", src, str(tmp_path / "c")]) == 0
+    js, binb = _glb_json_bin((tmp_path / "c" / "model.glb").read_bytes())
+    for a in js.get("accessors", []):
+        if a["componentType"] == 5126 and "min" in a:
+            v = js["bufferViews"][a["bufferView"]]
+            vals = struct.unpack("<%df" % (a["count"] * 3), binb[v["byteOffset"]:v["byteOffset"] + a["count"] * 12])
+            assert [min(vals[c::3]) for c in range(3)] == a["min"] and [max(vals[c::3]) for c in range(3)] == a["max"]

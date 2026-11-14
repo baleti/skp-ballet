@@ -487,7 +487,8 @@ def write_glb(model, path, edges=True, strict=False):
         off = len(bin_)
         _check_coords(buf)
         bin_ += struct.pack("<%df" % len(buf), *buf)
-        xs, ys, zs = buf[0::3], buf[1::3], buf[2::3]
+        r32 = struct.unpack("<%df" % len(buf), bin_[off:])   # min/max must equal the stored float32 values
+        xs, ys, zs = r32[0::3], r32[1::3], r32[2::3]
         views.append(dict(buffer=0, byteOffset=off, byteLength=len(buf) * 4, target=34962))
         accs.append(dict(bufferView=len(views) - 1, componentType=5126, count=n, type="VEC3",
                          min=[min(xs), min(ys), min(zs)], max=[max(xs), max(ys), max(zs)]))
@@ -503,10 +504,11 @@ def write_glb(model, path, edges=True, strict=False):
         off = len(bin_)
         _check_coords(seg)
         bin_ += struct.pack("<%df" % len(seg), *seg)
+        r32 = struct.unpack("<%df" % len(seg), bin_[off:])
         views.append(dict(buffer=0, byteOffset=off, byteLength=len(seg) * 4, target=34962))
         accs.append(dict(bufferView=len(views) - 1, componentType=5126, count=n, type="VEC3",
-                         min=[min(seg[0::3]), min(seg[1::3]), min(seg[2::3])],
-                         max=[max(seg[0::3]), max(seg[1::3]), max(seg[2::3])]))
+                         min=[min(r32[0::3]), min(r32[1::3]), min(r32[2::3])],
+                         max=[max(r32[0::3]), max(r32[1::3]), max(r32[2::3])]))
         mats.append(dict(name="edges", pbrMetallicRoughness=dict(baseColorFactor=[0.05, 0.05, 0.05, 1],
                                                                  metallicFactor=0, roughnessFactor=1)))
         prims.append(dict(attributes=dict(POSITION=len(accs) - 1), material=len(mats) - 1, mode=1))
