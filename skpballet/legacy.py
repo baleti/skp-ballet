@@ -491,8 +491,8 @@ def load_legacy(skp):
     d = Definition(-1, "root"); m.root = d
     if tail_suspect(skp.data, skp.version) or (not faces and _major(skp.version) >= 17 and not _end_ok(skp.data)):
         m.warnings.append("legacy file: unusual amount of data after the last entity list, the file may be TRUNCATED (geometry possibly partial)")
-    if 6 <= _major(skp.version) <= 12:
-        m.warnings.append("legacy file is SketchUp version %s: UNTESTED version (no public fixture exists for versions 6-12; "
+    if 6 <= _major(skp.version) <= 16 and _major(skp.version) != 13:
+        m.warnings.append("legacy file is SketchUp version %s: UNTESTED version (no public fixture exists for versions 6-12 and 14-16; "
                           "record layout assumed from neighbouring versions, geometry may be wrong or partial)" % _major(skp.version))
     if dropped_classes(skp.data):
         m.warnings.append("legacy file contains objects that are NOT read and not shown: " + ", ".join(dropped_classes(skp.data)))
