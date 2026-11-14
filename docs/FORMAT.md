@@ -379,3 +379,9 @@ reader; a writer must treat unknown trailing bytes as data to preserve verbatim,
 all flips, 33 percent of flips that mattered), 7 rejected, 0 hangs, 0 unexpected exception types. By decoded counts alone only 3 of
 870 flips looked silent, because most silent changes move coordinates. The legacy container has no integrity field, so a damaged
 but parseable file is accepted; a writer must never "repair" or re-emit a legacy file it has only read.
+
+### 2021+ model.dat interior bit flips (measured 2026-11-14, 5 fixtures x 300 flips of the DECOMPRESSED stream, seed 13, GLB sha256)
+1183 no effect, 261 changed output SILENTLY (17 percent), 54 changed with a warning, 2 rejected, 0 hangs. Real files are protected
+only by zip member CRC32 (see the deflated-member test): flips in the stored file are caught, but a flip made before compression
+(for example by a writer bug, since the writer recomputes the CRC) is accepted and shows up only as changed geometry. For a writer
+this means the oracle for correctness cannot be "reads back without error"; it must compare decoded content with the intended edit.
