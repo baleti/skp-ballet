@@ -385,3 +385,18 @@ def test_output_named_like_source_next_to_it_and_case_alias(tmp_path):
     alias = str(tmp_path / "IN.SKP")
     assert cli.main(["convert", f, alias]) == 2
     assert sha(f) == before
+
+
+KEYS = {"file", "version", "counts", "layer_names", "layers_flagged_off", "groups", "components",
+        "material_names", "texts", "annotations", "bbox_m", "warnings"}
+COUNTS = {"definitions", "vertices", "edges", "faces", "instances", "materials", "layers"}
+
+
+@pytest.mark.parametrize("src", FILES, ids=os.path.basename)
+def test_info_json_matches_documented_schema(src, capsys):
+    import json
+    assert cli.main(["info", "--json", src]) == 0
+    d = json.loads(capsys.readouterr().out)
+    assert KEYS <= set(d) and COUNTS <= set(d["counts"])
+    bb = d["bbox_m"]
+    assert bb is None or (len(bb) == 2 and all(len(p) == 3 for p in bb))
