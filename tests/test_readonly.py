@@ -67,3 +67,22 @@ def test_bad_inputs_fail_cleanly(kind, tmp_path):
     rc = cli.main(["info", str(p)])
     assert rc in (1, 2)
     assert not p.is_file() or p.stat().st_size in (0, 4096)
+
+
+def test_cli_damaged_inputs_exit_2_without_traceback(tmp_path):
+    import glob, subprocess, sys
+    data = os.path.join(os.path.dirname(__file__), "data")
+    legacy = sorted(glob.glob(os.path.join(data, "legacy", "*.skp")))[0]
+    nest = os.path.join(data, "nesting_2021.skp")
+    cases = {"empty": b"", "text": b"hello\n", "trunc30": open(nest, "rb").read()[:30],
+             "trunc1500": open(nest, "rb").read()[:1500], "legacy3000": open(legacy, "rb").read()[:3000]}
+    root = os.path.dirname(os.path.dirname(__file__))
+    for name, blob in cases.items():
+        p = tmp_path / (name + ".skp")
+        p.write_bytes(blob)
+        for args in (["info", str(p)], ["info", str(p), "--json"], ["convert", str(p), str(tmp_path / (name + ".glb"))],
+                     ["cache", str(p), str(tmp_path / ("c_" + name))]):
+            r = subprocess.run([sys.executable, "-m", "skpballet"] + args, cwd=root, capture_output=True, text=True, timeout=30)
+            assert r.returncode in ((0, 2) if name.startswith("legacy") else (2,)) and "Traceback" not in r.stderr, (name, args, r.returncode, r.stderr[-300:])
+    r = subprocess.run([sys.executable, "-m", "skpballet", "info", str(tmp_path / "missing.skp")], cwd=root, capture_output=True, text=True)
+    assert r.returncode == 2 and "Traceback" not in r.stderr
