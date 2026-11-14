@@ -37,6 +37,8 @@ def test_refuses_output_over_input(tmp_path, capsys):
     assert cli.main(["convert", f, f]) == 2
     assert cli.main(["convert", f, link]) == 2
     assert cli.main(["convert", f, str(tmp_path / "x.SKP")]) == 2
+    assert cli.main(["convert", f, str(tmp_path / "x.glb.skp")]) == 2
+    assert not (tmp_path / "x.glb.skp").exists() and not (tmp_path / "x.SKP").exists()
     assert sha(f) == before
 
 
