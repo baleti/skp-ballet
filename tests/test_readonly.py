@@ -577,3 +577,19 @@ def test_encrypted_flag_in_zip_members_fails_cleanly(tmp_path, capsys):
     assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 2
     assert not (tmp_path / "o.glb").exists()
     assert "Traceback" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("meth", [12, 14, 99])
+def test_unknown_zip_compression_method_fails_cleanly(meth, tmp_path, capsys):
+    """259: a zip method the reader cannot decode exits 2, writes nothing, no traceback."""
+    import struct
+    b = bytearray(open(os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp"), "rb").read())
+    for sig, off in ((b"PK\x03\x04", 8), (b"PK\x01\x02", 10)):
+        j = b.find(sig)
+        while j >= 0:
+            struct.pack_into("<H", b, j + off, meth)
+            j = b.find(sig, j + 4)
+    f = tmp_path / "m.skp"
+    f.write_bytes(bytes(b))
+    assert cli.main(["convert", str(f), str(tmp_path / "o.glb")]) == 2
+    assert not (tmp_path / "o.glb").exists() and "Traceback" not in capsys.readouterr().err
