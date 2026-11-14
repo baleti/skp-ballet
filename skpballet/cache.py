@@ -115,6 +115,7 @@ def write_cache(model, outdir, name="model.skp", edges=False, strict=False):
         if not b["idx"]:
             continue
         pos = b["pos"]
+        mesh._check_coords(pos)   # before packing: absurd values must raise ValueError, not OverflowError
         _p32 = struct.unpack("<%df" % len(pos), struct.pack("<%df" % len(pos), *pos))   # min/max of the stored float32 values
         mn = [min(_p32[i::3]) for i in range(3)]; mx = [max(_p32[i::3]) for i in range(3)]
         lo = [min(a, c) for a, c in zip(lo, mn)]; hi = [max(a, c) for a, c in zip(hi, mx)]
