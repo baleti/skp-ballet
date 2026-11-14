@@ -44,3 +44,16 @@ def test_canon_tolerates_damaged_models_with_none_ids():
     d.edges[None] = (0, 1)
     d.vertices[None] = (0.0, 0.0, 0.0)
     assert model_diff.diff(a, b)[0].get("edge") == [0, 1]
+
+
+def test_regress_diff_detects_the_image_change_and_is_quiet_for_head():
+    import subprocess
+    root = os.path.dirname(os.path.dirname(__file__))
+    out = subprocess.run(["git", "log", "--format=%H", "--grep=parse CImage"], cwd=root, capture_output=True, text=True).stdout.split()
+    if not out:
+        pytest.skip("CImage commit not in history")
+    sub = os.path.join(root, "tests", "data", "legacy", "image.skp")
+    r = subprocess.run([sys.executable, os.path.join(root, "tools", "regress_diff.py"), out[0] + "~1", sub], capture_output=True, text=True)
+    r2 = subprocess.run([sys.executable, os.path.join(root, "tools", "regress_diff.py"), "HEAD", sub], capture_output=True, text=True)
+    assert r2.returncode == 0, r2.stdout + r2.stderr
+    assert r.returncode == 1 and "changed: image.skp" in r.stdout, r.stdout + r.stderr
