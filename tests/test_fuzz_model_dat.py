@@ -274,3 +274,28 @@ def test_cli_strict_exits_3_on_container_damage(damage, tmp_path):
     assert r.returncode == 3, (r.returncode, r.stderr)
     r = subprocess.run([sys.executable, "-m", "skpballet", "info", NEST, "--strict"], cwd=root, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def test_deflated_member_bitflips_never_silently_change_decoded_bytes():
+    """Flip one bit at ~40 positions per zip member (compressed bytes). Either zipfile/CRC rejects it
+    (reader raises SkpError or warns) or the member decodes to identical bytes."""
+    import io, zipfile
+    d = open(NEST, "rb").read()
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    orig = zipfile.ZipFile(io.BytesIO(d[z:]))
+    for i in orig.infolist():
+        # local header: 30 + name + LOCAL extra (read from the file, not the central copy)
+        lo = z + i.header_offset
+        nlen, elen = int.from_bytes(d[lo + 26:lo + 28], "little"), int.from_bytes(d[lo + 28:lo + 30], "little")
+        base = lo + 30 + nlen + elen
+        for k in range(0, i.compress_size, max(1, i.compress_size // 40)):
+            b = bytearray(d)
+            b[base + k] ^= 1
+            try:
+                m = scene.load(container.open_skp(bytes(b)))
+            except container.SkpError:
+                continue
+            if any("CRC" in w or "damaged" in w for w in m.warnings):
+                continue
+            zz = zipfile.ZipFile(io.BytesIO(bytes(b[z:])))
+            assert zz.read(i.filename) == orig.read(i.filename), (i.filename, k)
