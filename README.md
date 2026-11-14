@@ -27,7 +27,7 @@ triangulation handles holes, pinched loops, spikes and T-touching vertices (area
 percent of faces off by more than 0.1 percent). See docs/FORMAT.md.
 
 The viewer loads three.js from `../rvt-ballet/web/vendor` or `$SKP_BALLET_VENDOR`.
-Tests: `python3 -m pytest tests`. Licenses: LICENSES.md.
+Tests: `python3 -m pytest tests` (296 collected, about 2 minutes). Licenses: LICENSES.md.
 
 ## Truncated or partial files
 
@@ -36,7 +36,7 @@ marker, so a truncated one can load with partial geometry. Every legacy load war
 the data after the last entity list plus the usual file end bytes) adds "may be TRUNCATED": no false positives on the
 29 public legacy fixtures, 222 of 235 test truncations flagged by TRUNCATED or INCOMPLETE, 2 rejected, 11 silent (cuts after most data, in the file tail, and v3 which has no layer table). Use
 `skp-ballet info --strict FILE` (also on convert/cache) to exit with status 3 when a model may be partial
-(TRUNCATED, INCOMPLETE or instances NOT placed). Corrupted coordinates (NaN, overflow) are refused with exit 2.
+(TRUNCATED, INCOMPLETE, instances NOT placed, or any "extra or damaged data" warning: damaged zip CRC, missing meta.dat or styles, malformed material/style xml, header vs meta version mismatch, model.dat length mismatch, bytes after the zip). Corrupted coordinates (NaN, overflow) are refused with exit 2.
 
 ## Windows / macOS
 
@@ -62,3 +62,12 @@ The front-end's default Hidden line style is spoiled by edge line batches: with 
 (nesting_2021) draws nothing and legacy chair_and_table only faint dotted edges; without them both draw clean outlines
 (headless chromium, 2026-11-11). So `cache` omits edge batches unless `--edges` is given. `?style=shaded` or `?style=wire` in the URL selects those styles (`wireframe` is not a valid value and leaves the view empty). An empty model (no
 triangles) never finishes loading in the front-end. Verified in headless chromium on public fixtures.
+
+## Tools (read-only checks, aggregate output, safe on private files)
+
+- `tools/model_diff.py A.skp B.skp`: compares decoded content (exit 0 identical, 1 different, 2 unreadable).
+- `tools/skp_bytes_diff.py A.skp B.skp`: byte ranges and zip members that differ (decompressed model.dat for 2021+).
+- `tools/area_check.py FILE.skp`: face triangulation area self-check.
+
+Measured limits of "reads back without error" (single-bit flips): decoded output changed silently in 17 percent of flips in
+decompressed 2021+ model.dat and 1.9 percent in legacy files; see docs/FORMAT.md and docs/WRITER-REQUIREMENTS.md.
