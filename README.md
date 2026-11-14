@@ -73,3 +73,11 @@ triangles) never finishes loading in the front-end. Verified in headless chromiu
 
 Measured limits of "reads back without error" (single-bit flips): decoded output changed silently in 17 percent of flips in
 decompressed 2021+ model.dat and 1.9 percent in legacy files; see docs/FORMAT.md and docs/WRITER-REQUIREMENTS.md.
+
+## `info --json` schema
+
+Pure ASCII JSON, one object: `file` (base name), `version` (SketchUp file version string),
+`counts` (`definitions`, `vertices`, `edges`, `faces`, `instances`, `materials`, `layers`),
+`layer_names`, `layers_flagged_off` (hidden layers; legacy flag is unverified), `groups`,
+`components`, `material_names`, `texts`, `annotations`, `bbox_m` (`[[minx,miny,minz],[maxx,maxy,maxz]]`
+in metres, or null when empty), `warnings` (strings raised while reading). Fields may be added; none are removed.

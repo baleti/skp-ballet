@@ -27,7 +27,7 @@ def test_bitflips(src, tmp_path):
         for _ in range(rnd.choice((1, 1, 3, 8))):
             b[rnd.randrange(len(b))] ^= 1 << rnd.randrange(8)
         open(f, "wb").write(bytes(b))
-        signal.alarm(10)
+        signal.alarm(5)
         try:
             rc = cli.main(["convert", f, str(tmp_path / "o.glb")])
         finally:
