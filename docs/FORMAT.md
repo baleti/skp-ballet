@@ -439,3 +439,10 @@ record length warning. Harness pitfall found while measuring: the fake file clas
 tests/test_fuzz_model_dat.py does), otherwise the property wins and the "damage" is silently not applied (my first run reported 1,200
 unchanged cases for that reason). Conclusion unchanged: for 2021+ the reader cannot be the oracle of a writer; compare decoded content
 against the intended edit and rely on the CRC only for stored files.
+
+### 2021+ bit flips with the tiling guard, and why a coordinate-magnitude guard is useless (2026-11-14)
+Same 1,500 single-bit flips as above: 1183 no effect, 125 changed with a warning (was 54), 190 changed silently (was 261), 2 rejected. The silent
+ones: vertex or definition coordinate changed (111 of the 132 classified by decoded vertices/materials/layers), layer data (12), counts only (9).
+A magnitude/finiteness guard on coordinates (intact public maximum |coord| 108 inches) would flag only 1 of the 23 silent cases whose bounding
+extent changed (flips that matter land in the mantissa, not the exponent). Not implemented. Value damage inside a record is undetectable
+on read without a checksum; a writer's check must compare decoded content with the intended edit.
