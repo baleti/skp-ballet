@@ -545,3 +545,20 @@ def test_info_bbox_equals_cache_meta_bbox(src, tmp_path, capsys):
     # info counts edges too, cache triangles only: the cache box lies inside the info box, equal when edges add nothing
     t = 1e-5
     assert all(g >= w - t for g, w in zip(meta[0], want[0])) and all(g <= w + t for g, w in zip(meta[1], want[1])), (info, meta)
+
+
+@pytest.mark.parametrize("src", FILES, ids=os.path.basename)
+def test_layer_and_material_names_agree_across_outputs(src, tmp_path, capsys):
+    """257b: info --json, convert GLB extras and cache materials.json report the same names."""
+    import json
+    assert cli.main(["info", "--json", src]) == 0
+    info = json.loads(capsys.readouterr().out)
+    assert cli.main(["convert", src, str(tmp_path / "o.glb")]) == 0
+    js, _ = _glb_json_bin((tmp_path / "o.glb").read_bytes())
+    ex = js["asset"]["extras"]
+    assert ex["layers"] == info["layer_names"] and ex["layers_flagged_off"] == info["layers_flagged_off"]
+    assert ex["materials"] == info["counts"]["materials"]
+    assert cli.main(["cache", src, str(tmp_path / "c")]) == 0
+    mats = json.loads((tmp_path / "c" / "materials.json").read_text())["materials"]
+    names = sorted(m["name"] for m in mats if m["name"] != "default")
+    assert set(names) <= set(info["material_names"])
