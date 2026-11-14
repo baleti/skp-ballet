@@ -36,7 +36,7 @@ marker, so a truncated one can load with partial geometry. Every legacy load war
 the data after the last entity list plus the usual file end bytes) adds "may be TRUNCATED": no false positives on the
 29 public legacy fixtures, 222 of 235 test truncations flagged by TRUNCATED or INCOMPLETE, 2 rejected, 11 silent (cuts after most data, in the file tail, and v3 which has no layer table). Use
 `skp-ballet info --strict FILE` (also on convert/cache) to exit with status 3 when a model may be partial
-(TRUNCATED, INCOMPLETE, instances NOT placed, or any "extra or damaged data" warning: damaged zip CRC, missing meta.dat or styles, malformed material/style xml, header vs meta version mismatch, model.dat length mismatch, bytes after the zip). Corrupted coordinates (NaN, overflow) are refused with exit 2.
+(TRUNCATED, INCOMPLETE, instances NOT placed, or any "extra or damaged data" warning: damaged zip CRC, missing meta.dat or styles, malformed material/style xml, header vs meta version mismatch, model.dat length mismatch, bytes after the zip). Corrupted coordinates (NaN, overflow) are refused with exit 2. Also damaged-data signals added 2026-11-14: legacy runs of 256+ zero bytes or 64+ 0xFF bytes, an UNTESTED-version note for legacy versions 6-12 and 14-16 (no public fixtures), and for 2021+ files record lengths in model.dat that do not tile their parent down to depth 5. Measured limits (value damage inside a record stays undetectable) are in docs/FORMAT.md.
 
 ## Windows / macOS
 
