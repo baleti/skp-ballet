@@ -662,3 +662,44 @@ def test_instance_cycle_is_cut_in_cache_too(tmp_path):
     assert time.time() - t < 2
     assert sum(b["nt"] for b in batches.values()) == 1
     assert any("instance cycle" in w for w in m.warnings)
+
+
+def _tri_def(did, name):
+    from skpballet import scene
+    d = scene.Definition(did, name)
+    d.vertices = {1: (0, 0, 0), 2: (1, 0, 0), 3: (0, 1, 0)}
+    d.faces = [dict(id=1, loops=[[1, 2, 3]], mat=None, normal=(0, 0, 1))]
+    return d
+
+
+@pytest.mark.parametrize("shape", ["mutual", "to_root"])
+def test_indirect_cycles_cut_in_flatten_and_cache(shape):
+    """264/265: A->B->A and an instance of the root definition itself: one placement each, quick, reported."""
+    import time
+    from skpballet import scene, mesh, cache
+    ident = (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0)
+    inst = lambda i, t: dict(def_id=t, matrix=ident, id=i, name="")
+    m = scene.Model()
+    a, b = _tri_def(1, "A"), _tri_def(2, "B")
+    m.defs = {1: a, 2: b}
+    r = scene.Definition(0, "root")
+    m.root = r
+    if shape == "mutual":
+        a.instances, b.instances, r.instances = [inst(5, 2), inst(6, 2)], [inst(7, 1), inst(8, 1)], [inst(9, 1)]
+        expect = 3          # root->A (1) -> two B (1 each); every B->A is cyclic
+    else:
+        m.defs[0] = r
+        r.vertices, r.faces = a.vertices, a.faces
+        r.instances = [inst(5, 0), inst(6, 0)]
+        expect = 1          # the root's own triangle; its instances of itself are cyclic
+        expect_cache = 3    # cache: loose root geometry plus one element per root-level instance (each placed once)
+    expect_cache = locals().get("expect_cache", expect)
+    t = time.time()
+    res = mesh.flatten(m)
+    assert time.time() - t < 2 and sum(len(v) for v in res.values()) // 9 == expect
+    assert any("instance cycle" in w for w in m.warnings)
+    m.warnings.clear()
+    t = time.time()
+    _, batches = cache.build(m)
+    assert time.time() - t < 2 and sum(bb["nt"] for bb in batches.values()) == expect_cache
+    assert any("instance cycle" in w for w in m.warnings)
