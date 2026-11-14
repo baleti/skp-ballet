@@ -372,3 +372,16 @@ def test_skp_looking_output_names_are_refused(name, tmp_path):
     assert cli.main(["convert", nest, str(tmp_path / name)]) == 2
     assert cli.main(["cache", nest, str(tmp_path / name)]) == 2
     assert not os.listdir(tmp_path)
+
+
+def test_output_named_like_source_next_to_it_and_case_alias(tmp_path):
+    """239: in.skp.glb beside in.skp is a normal output and leaves the source intact; 238: a
+    case-variant alias of the source (same file on case-insensitive disks) is refused."""
+    f = str(tmp_path / "in.skp")
+    shutil.copy(FILES[0], f)
+    before = sha(f)
+    assert cli.main(["convert", f, f + ".glb"]) == 0
+    assert (tmp_path / "in.skp.glb").stat().st_size > 0
+    alias = str(tmp_path / "IN.SKP")
+    assert cli.main(["convert", f, alias]) == 2
+    assert sha(f) == before
