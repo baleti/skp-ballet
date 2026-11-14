@@ -361,6 +361,8 @@ def flatten(model, max_depth=24, max_tris=None, lines=None):
                     buf.extend((x * INCH, z * INCH, -y * INCH))
                 count[0] += 1
 
+    path = set()   # definitions on the current ancestor chain: an instance of one of them is a cycle (corrupt file)
+
     def walk(d, m, depth):
         nodes[0] += 1
         if nodes[0] > MAX_PLACEMENTS:
@@ -379,10 +381,18 @@ def flatten(model, max_depth=24, max_tris=None, lines=None):
                     for p in (d.vertices[a], d.vertices[b]):
                         x, y, z = _mul(m, p)
                         lines.extend((x * INCH, z * INCH, -y * INCH))
+        path.add(d.id)
         for inst in d.instances:
             sub = model.defs.get(inst["def_id"])
-            if sub is not None:
-                walk(sub, _compose(m, inst["matrix"]), depth + 1)
+            if sub is None:
+                continue
+            if sub.id in path:
+                w = "instance cycle: a definition contains itself (corrupt file); the cyclic instance is NOT placed"
+                if w not in model.warnings:
+                    model.warnings.append(w)
+                continue
+            walk(sub, _compose(m, inst["matrix"]), depth + 1)
+        path.discard(d.id)
 
     walk(model.root, IDENT, 0)
     return res

@@ -34,6 +34,7 @@ def build(model, max_depth=24, edges=False):
     nodes = [0]
     tot = [0]   # triangles emitted so far
     for ei, (name, cls, cat, d0, m0, sub_only) in enumerate(_elements(model)):
+        path = set()
         def walk(d, m, depth, top):
             nodes[0] += 1
             if nodes[0] > mesh.MAX_PLACEMENTS:
@@ -73,10 +74,18 @@ def build(model, max_depth=24, edges=False):
                         b["pos"].extend((x * INCH, z * INCH, -y * INCH)); b["eidx"].append(float(ei))
                     b["idx"].extend((b["nv"], b["nv"] + 1)); b["nv"] += 2; b["nt"] += 1
                 b["ranges"].extend((ei, start, b["nt"] - start))
+            path.add(d.id)
             for inst in d.instances:
                 s = model.defs.get(inst["def_id"])
-                if s is not None:
-                    walk(s, _compose(m, inst["matrix"]), depth + 1, False)
+                if s is None:
+                    continue
+                if s.id in path:   # a definition containing itself: corrupt file, do not expand it
+                    w = "instance cycle: a definition contains itself (corrupt file); the cyclic instance is NOT placed"
+                    if w not in model.warnings:
+                        model.warnings.append(w)
+                    continue
+                walk(s, _compose(m, inst["matrix"]), depth + 1, False)
+            path.discard(d.id)
         if sub_only:
             walk(d0, m0, 0, True)
         else:      # loose geometry only, not the instances (they are their own elements)

@@ -620,3 +620,45 @@ def test_fake_end_record_after_the_zip_does_not_hide_a_good_archive(tmp_path, ca
     assert (tmp_path / "o.glb").read_bytes()[:4] == b"glTF"
     assert cli.main(["convert", src, str(tmp_path / "ref.glb")]) == 0
     assert _glb_json_bin((tmp_path / "o.glb").read_bytes())[1] == _glb_json_bin((tmp_path / "ref.glb").read_bytes())[1]
+
+
+def test_instance_cycle_is_cut_quickly_and_reported():
+    """263: a definition that instances itself (twice) must not expand to the 500000 placement budget (52 s before)."""
+    import time
+    from skpballet import scene, mesh
+    m = scene.Model()
+    d = scene.Definition(1, "A")
+    m.defs[1] = d
+    d.vertices = {1: (0, 0, 0), 2: (1, 0, 0), 3: (0, 1, 0)}
+    d.faces = [dict(id=1, loops=[[1, 2, 3]], mat=None, normal=(0, 0, 1))]
+    ident = (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0)
+    d.instances = [dict(def_id=1, matrix=ident, id=5, name=""), dict(def_id=1, matrix=ident, id=6, name="")]
+    r = scene.Definition(0, "root")
+    r.instances = [dict(def_id=1, matrix=ident, id=7, name="")]
+    m.root = r
+    t = time.time()
+    res = mesh.flatten(m)
+    assert time.time() - t < 2
+    assert sum(len(v) for v in res.values()) == 9          # exactly one triangle placed
+    assert any("instance cycle" in w for w in m.warnings)
+
+
+def test_instance_cycle_is_cut_in_cache_too(tmp_path):
+    """263b: same cycle through the cache builder (own walker): fast, one triangle, reported."""
+    import time
+    from skpballet import scene, cache
+    m = scene.Model()
+    d = scene.Definition(1, "A")
+    m.defs[1] = d
+    d.vertices = {1: (0, 0, 0), 2: (1, 0, 0), 3: (0, 1, 0)}
+    d.faces = [dict(id=1, loops=[[1, 2, 3]], mat=None, normal=(0, 0, 1))]
+    ident = (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0)
+    d.instances = [dict(def_id=1, matrix=ident, id=5, name=""), dict(def_id=1, matrix=ident, id=6, name="")]
+    r = scene.Definition(0, "root")
+    r.instances = [dict(def_id=1, matrix=ident, id=7, name="")]
+    m.root = r
+    t = time.time()
+    elements, batches = cache.build(m)
+    assert time.time() - t < 2
+    assert sum(b["nt"] for b in batches.values()) == 1
+    assert any("instance cycle" in w for w in m.warnings)
