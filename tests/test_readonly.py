@@ -322,3 +322,13 @@ def test_strict_refuses_an_export_that_truncates_at_a_limit(tmp_path, monkeypatc
     assert cli.main(["cache", "--strict", nest, str(cdir)]) == 3 and not cdir.exists()
     assert cli.main(["convert", nest, str(out)]) == 0 and out.read_bytes()[:4] == b"glTF"
     assert cli.main(["cache", nest, str(cdir)]) == 0 and (cdir / "model.glb").exists()
+
+
+def test_export_time_warnings_are_printed_by_convert_and_cache(tmp_path, monkeypatch, capsys):
+    from skpballet import cli, mesh
+    nest = os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp")
+    monkeypatch.setattr(mesh, "MAX_PLACEMENTS", 1)
+    assert cli.main(["convert", nest, str(tmp_path / "o.glb")]) == 0
+    assert "NOT placed" in capsys.readouterr().out
+    assert cli.main(["cache", nest, str(tmp_path / "cc")]) == 0
+    assert "NOT placed" in capsys.readouterr().out

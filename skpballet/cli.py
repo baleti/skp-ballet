@@ -170,6 +170,11 @@ def main(argv=None):
             info_json(ns.file)
             return 0
         m = info(ns.file)
+        nw0 = len(m.warnings)
+
+        def export_warnings():
+            for w in m.warnings[nw0:]:   # raised during export (limits): not yet shown by info
+                print("warning:", _clean(w))
         if ns.strict and any("TRUNCATED" in w or "INCOMPLETE" in w or "NOT placed" in w or "NOT read" in w or "damaged data" in w or "UNTESTED" in w for w in m.warnings):
             print("skp-ballet: --strict: model may be partial, see warnings above", file=sys.stderr)
             return 3
@@ -178,14 +183,17 @@ def main(argv=None):
         if cmd == "cache":
             from . import cache
             print(cache.write_cache(m, ns.outdir, os.path.basename(ns.file), edges=ns.edges, strict=ns.strict), "->", ns.outdir)
+            export_warnings()
             return 0
         if cmd == "convert":
             out = ns.out or os.path.splitext(ns.file)[0] + ".glb"
             print("triangles:", mesh.write_glb(m, out, strict=ns.strict), "->", out)
+            export_warnings()
             return 0
         glb = os.path.join(tempfile.mkdtemp(prefix="skpballet-"), "model.glb")
         ntri = mesh.write_glb(m, glb)
         print("triangles:", ntri)
+        export_warnings()
         if ntri == 0:   # the rvt-ballet front-end waits forever on a model without geometry
             print("skp-ballet: the file has no triangles to show; not opening the viewer", file=sys.stderr)
             return 1
