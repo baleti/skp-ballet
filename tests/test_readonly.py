@@ -107,7 +107,10 @@ def test_cli_strict_exits_3_on_truncated_legacy_and_default_command_does_not_tra
     assert flagged == len(sorted(glob.glob(os.path.join(data, "*.skp")))[:6]) > 0
 
 
-def test_legacy_image_file_warns_that_shown_face_may_be_the_image_definition():
+def test_legacy_image_file_uses_root_list_not_image_definition():
+    """image.skp: root face 10x10 in; the Image0 definition (48x36 in face) is written first. openskp agrees (cross-check)."""
     from skpballet import container, scene
     m = scene.load(container.open_skp(os.path.join(os.path.dirname(__file__), "data", "legacy", "image.skp")))
-    assert any("image's own face" in w for w in m.warnings), m.warnings
+    xs = sorted(p[0] for p in m.root.vertices.values())
+    assert xs == [0.0, 0.0, 10.0, 10.0], m.root.vertices
+    assert any("LAST entity list" in w for w in m.warnings), m.warnings

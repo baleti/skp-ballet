@@ -158,6 +158,13 @@ class _R:
             if self.inst_tail:
                 self.u16()
             return ("inst", nm, dslot, v[:9], v[9:12], v[12], name == "CGroup")
+        if name == "CImage":
+            # instance-shaped (same record layout as CComponentInstance, per the MIT notes of the public OpenSKP project, matched
+            # here on image.skp): definition ref, 12 + 1 f64, source path, 16-byte GUID. Parsed only to get past it.
+            self.pre(); self.drawbase(); dslot = self.u16(); self.f64s(13); self.utf16(); self.p += 16
+            if self.inst_tail:
+                self.u16()
+            return ("image", dslot)
         if name == "CFace":
             self.pre(); matslot = self.drawbase(); layer = self.last_layer
             plane = self.f64s(4)
@@ -468,13 +475,28 @@ def load_legacy(skp):
             raise SkpError("legacy file: %s" % e)
         faces = []   # a model with no geometry at all (e.g. only layers/materials): empty scene, not an error
         inf = dict(count=0, parsed=0, complete=True)
+    root_from_last = False
+    if faces and b"CImage" in skp.data:
+        # an image's own definition list is written BEFORE the root list (image.skp): the model root is the LAST list
+        try:
+            lists = scan_lists(skp.data, skp.version)
+            if len(lists) >= 2:
+                lf, ls_, le = _list_geometry(lists[-1][0])
+                if lf:
+                    faces, inf = lf, dict(inf, face_matslots=ls_, face_layerrefs=[], edges=le, parsed=len(lists[-1][0]), count=len(lists[-1][0]), complete=True)
+                    root_from_last = True
+        except (LegacyError, IndexError, struct.error, TypeError, ValueError):
+            pass
     m = Model(); m.version = skp.version + " (legacy, experimental: first geometry run only)"
     d = Definition(-1, "root"); m.root = d
     if tail_suspect(skp.data, skp.version) or (not faces and _major(skp.version) >= 17 and not _end_ok(skp.data)):
         m.warnings.append("legacy file: unusual amount of data after the last entity list, the file may be TRUNCATED (geometry possibly partial)")
     if dropped_classes(skp.data):
         m.warnings.append("legacy file contains objects that are NOT read and not shown: " + ", ".join(dropped_classes(skp.data)))
-        if "CImage" in dropped_classes(skp.data):
+        if root_from_last:
+            m.warnings.append("legacy file contains an image: the model root is taken from the LAST entity list; the image itself "
+                              "(picture quad) is NOT shown (experimental)")
+        elif "CImage" in dropped_classes(skp.data):
             m.warnings.append("legacy file contains an image: the first entity list that is shown may be the image's own face (a "
                               "definition), not the model's root geometry, which can then be NOT read (image.skp: 48x36 in image face shown, "
                               "the 10x10 in root face missing)")

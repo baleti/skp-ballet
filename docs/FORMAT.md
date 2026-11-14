@@ -396,3 +396,9 @@ declared there); `scan_lists` stops because `_R.obj()` raises "unsupported class
 10x10 in face (doubles 10.0 at 5044..) is never reached. Visible in the CImage record: a 13-double transform-like block (1.0
 diagonal, 40.0 translation), a 16-byte GUID (10 11 12 .. 1f with 2 bytes differing), then the next objects; its total length
 is not pinned yet, so it cannot be skipped safely.
+
+Resolved (2026-11-14): CImage is instance-shaped (pre, draw base, definition ref u16, 13 f64 = 12 transform + 1.0, UTF-16 source path,
+16-byte GUID; same as CComponentInstance, layout from the MIT notes of the public OpenSKP project and confirmed by parsing image.skp
+to the end of the list: 2 lists, 5 and 6 objects). With CImage parsed, `scan_lists` reaches the root list and `load_legacy` takes the
+LAST list as the model root when a file has a CImage and at least 2 lists; image.skp now shows the 10x10 in root face like openskp
+does. The image's picture quad (instance of Image0, hidden) is still not shown; only one public fixture has a CImage, so this rests on one file.
