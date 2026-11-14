@@ -159,7 +159,7 @@ def main(argv=None):
     ns = ap.parse_args(rest)
     try:
         out_arg = getattr(ns, "out", None) or getattr(ns, "outdir", None)
-        if out_arg and (os.path.exists(out_arg) and os.path.samefile(out_arg, ns.file) or out_arg.lower().endswith(".skp")):
+        if out_arg and (os.path.exists(out_arg) and os.path.samefile(out_arg, ns.file) or out_arg.rstrip(" .").lower().endswith(".skp")):   # Windows ignores trailing dots and spaces: "x.skp." is x.skp
             print("skp-ballet: refusing to write %s: it is (or looks like) a SketchUp file; skp-ballet never writes .skp" % out_arg, file=sys.stderr)
             return 2
         if cmd == "info" and (ns.layers or ns.bbox):

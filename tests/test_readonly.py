@@ -363,3 +363,12 @@ def test_stale_temp_files_are_swept_but_fresh_and_foreign_files_stay(tmp_path):
     with mesh.atomic_open(str(mine), "wb") as f:
         f.write(b"ok")
     assert not old.exists() and new.exists() and other.exists() and mine.read_bytes() == b"ok"
+
+
+@pytest.mark.parametrize("name", ["x.skp", "x.SKP", "x.skp.", "x.skp ", "x.skp. ."])
+def test_skp_looking_output_names_are_refused(name, tmp_path):
+    from skpballet import cli
+    nest = os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp")
+    assert cli.main(["convert", nest, str(tmp_path / name)]) == 2
+    assert cli.main(["cache", nest, str(tmp_path / name)]) == 2
+    assert not os.listdir(tmp_path)
