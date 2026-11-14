@@ -22,7 +22,10 @@ class SkpFile:
 
     def read(self, name):
         try:
-            return self.zip.read(name)
+            zi = self.zip.getinfo(name)
+            if zi.file_size > MAX_MEMBER:   # zip bomb guard: zipfile never yields more than the declared size, so this bounds memory
+                raise SkpError("zip member %s declares %d bytes (limit %d): refusing to inflate it" % (name, zi.file_size, MAX_MEMBER))
+            return self.zip.read(zi)
         except (zipfile.BadZipFile, zlib.error, NotImplementedError, EOFError, OSError, KeyError, RuntimeError) as e:
             raise SkpError("cannot read %s: %s" % (name, e))
 
@@ -37,6 +40,7 @@ class LegacySkp:
         self.version, self.data = version, data
 
 
+MAX_MEMBER = 2 << 30   # largest zip member inflated into memory; real model.dat files are far smaller
 MAX_BYTES = 4 << 30   # no real .skp is near this; refuse instead of reading an unbounded or device file into memory
 
 

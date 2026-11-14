@@ -262,3 +262,14 @@ def test_oversized_input_refused_before_reading(monkeypatch):
     monkeypatch.setattr(container, "MAX_BYTES", 100)
     with pytest.raises(container.SkpError, match="larger than"):
         container.open_skp(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"))
+
+
+def test_zip_member_over_the_limit_is_refused_not_inflated(monkeypatch):
+    from skpballet import container, scene
+    sk = container.open_skp(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"))
+    assert len(sk.model_dat) > 100
+    monkeypatch.setattr(container, "MAX_MEMBER", 100)
+    with pytest.raises(container.SkpError, match="refusing to inflate"):
+        sk.model_dat
+    with pytest.raises(container.SkpError):
+        scene.load(sk)
