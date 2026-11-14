@@ -400,6 +400,33 @@ def _check_coords(vals):
             raise ValueError("geometry has non-finite or absurd coordinates (corrupt file?)")
 
 
+import contextlib
+
+
+@contextlib.contextmanager
+def atomic_open(path, mode="wb", **kw):
+    """Write to a temp file in the same directory, then os.replace onto path. Replaces a symlink at path instead of writing
+    THROUGH it (a link to a source .skp must never be overwritten) and leaves an existing file intact if the write fails."""
+    import os, tempfile
+    d = os.path.dirname(os.path.abspath(path))
+    fd, tmp = tempfile.mkstemp(prefix=".skpballet-", suffix=".tmp", dir=d)
+    try:
+        with os.fdopen(fd, mode, **kw) as f:
+            yield f
+        um = os.umask(0); os.umask(um)
+        try:
+            os.chmod(tmp, 0o666 & ~um)   # mkstemp makes 0600; keep the permissions a plain open() would give
+        except OSError:
+            pass
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def write_glb(model, path, edges=True):
     seg = [] if edges else None
     import gc
@@ -446,7 +473,7 @@ def write_glb(model, path, edges=True):
     j = json.dumps(js, separators=(",", ":")).encode()
     j += b" " * (-len(j) % 4)
     bin_ += b"\0" * (-len(bin_) % 4)
-    with open(path, "wb") as f:
+    with atomic_open(path, "wb") as f:
         f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(j) + 8 + len(bin_)))
         f.write(struct.pack("<I4s", len(j), b"JSON") + j)
         f.write(struct.pack("<I4s", len(bin_), b"BIN\0") + bytes(bin_))

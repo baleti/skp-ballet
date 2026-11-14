@@ -117,7 +117,7 @@ def write_cache(model, outdir, name="model.skp", edges=False):
     js = dict(asset=dict(version="2.0", generator="skp-ballet"), scene=0, scenes=[dict(nodes=list(range(len(nodes))))], nodes=nodes,
               meshes=meshes, materials=matsj, accessors=accs, bufferViews=views, buffers=[dict(byteLength=len(bin_))])
     jb = json.dumps(js, separators=(",", ":")).encode(); jb += b" " * (-len(jb) % 4)
-    with open(os.path.join(outdir, "model.glb"), "wb") as f:
+    with mesh.atomic_open(os.path.join(outdir, "model.glb"), "wb") as f:
         f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(jb) + 8 + len(bin_)))
         f.write(struct.pack("<I4s", len(jb), b"JSON") + jb)
         f.write(struct.pack("<I4s", len(bin_), b"BIN\0") + bytes(bin_))
@@ -126,8 +126,8 @@ def write_cache(model, outdir, name="model.skp", edges=False):
     meta = dict(file=name, levels=[], grids=[], rooms=[], views=[], sheets=[], fidLabels={"mesh": "triangle mesh from the SketchUp file"}, phases=[],
                 defaultHidden=[], stamps={"reader": "skp-ballet", "viewer": "skp-ballet"}, phase="done", batches=bmeta, bbox=bb,
                 coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp", warnings=list(model.warnings))
-    with open(os.path.join(outdir, "meta.json"), "w", encoding="utf-8") as f:
+    with mesh.atomic_open(os.path.join(outdir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, separators=(",", ":"))
-    with open(os.path.join(outdir, "materials.json"), "w", encoding="utf-8") as f:
+    with mesh.atomic_open(os.path.join(outdir, "materials.json"), "w", encoding="utf-8") as f:
         json.dump(dict(materials=mats, textureClasses={}), f, separators=(",", ":"))
     return dict(elements=len(elements), batches=len(bmeta), triangles=sum(b["tris"] for b in bmeta if b["kind"] == "tri"))

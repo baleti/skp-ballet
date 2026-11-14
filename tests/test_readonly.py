@@ -217,3 +217,23 @@ def test_info_text_output_sanitises_file_controlled_names(capsys, monkeypatch):
     assert cli.main(["info", "f"]) == 0
     out = capsys.readouterr().out
     assert "\x1b" not in out and "\x07" not in out and "‮" not in out and "RED" in out
+
+
+def test_outputs_never_write_through_symlinks_to_the_source(tmp_path):
+    """cache wrote model.glb/meta.json/materials.json THROUGH symlinks placed in the output dir: a link to the source .skp
+    overwrote the original. Outputs are now temp file + os.replace, so the link is replaced and the source is untouched."""
+    import shutil
+    from skpballet import cli
+    src = tmp_path / "m.skp"; shutil.copy(os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp"), src)
+    before = hashlib.sha256(src.read_bytes()).hexdigest()
+    cdir = tmp_path / "cc"; cdir.mkdir()
+    for n in ("model.glb", "meta.json", "materials.json"):
+        os.symlink(src, cdir / n)
+    assert cli.main(["cache", str(src), str(cdir)]) == 0
+    assert hashlib.sha256(src.read_bytes()).hexdigest() == before
+    assert not os.path.islink(cdir / "model.glb") and (cdir / "model.glb").read_bytes()[:4] == b"glTF"
+    assert not [f for f in os.listdir(cdir) if f.endswith(".tmp")]
+    # convert to a symlink that points at the source: refused or replaced, never written through
+    out = tmp_path / "o.glb"; os.symlink(src, out)
+    cli.main(["convert", str(src), str(out)])
+    assert hashlib.sha256(src.read_bytes()).hexdigest() == before
