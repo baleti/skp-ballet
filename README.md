@@ -67,6 +67,7 @@ triangles) never finishes loading in the front-end. Verified in headless chromiu
 
 - `tools/model_diff.py A.skp B.skp`: compares decoded content (exit 0 identical, 1 different, 2 unreadable).
 - `tools/skp_bytes_diff.py A.skp B.skp`: byte ranges and zip members that differ (decompressed model.dat for 2021+).
+- `tools/regress_diff.py REV [DIR_OR_FILES]`: run before every reader change; lists fixtures whose decoded content changed since git revision REV (throwaway worktree, names only). It also takes paths, so local-only private files can be checked without their names leaving the machine.
 - `tools/area_check.py FILE.skp`: face triangulation area self-check.
 
 Measured limits of "reads back without error" (single-bit flips): decoded output changed silently in 17 percent of flips in
