@@ -412,3 +412,11 @@ truncation signals (tail_suspect, end marker check) only run for version >= 17 (
 carries one extra byte before the first CVertex, cause not pinned). Guard: files of versions 6-12 and 14-16 raise an
 "UNTESTED version" warning that also trips --strict (tests/test_readonly.py). Remove it per version only once a public
 fixture of that version decodes and is cross-checked.
+
+### Legacy truncation on versions below 17 (measured 2026-11-14, fixtures v3, v4, v5, v13)
+nesting_2013 (v13) cut by 1 byte, 64, 256 and 10 percent: geometry unchanged, no warning (harmless: only trailing data lost). Cut by 30 percent:
+2 of 3 instances/definitions survive, NO warning; cut by 50 percent: 1 of 3 faces survives, NO warning (silent geometry loss).
+v5 (one fixture): silent up to a 10 percent cut, strict-flagged from 30 percent (the face is lost, flagged through INCOMPLETE).
+The existing end-of-file test `_end_ok` is False on all four intact pre-17 fixtures, so it cannot serve as a guard there
+(it would flag intact files). Conclusion: for legacy versions below 17 there is currently no usable truncation signal that catches a
+mid-file cut; this is the same read-only rule as for any legacy file, now with measured evidence for the older versions.
