@@ -372,27 +372,27 @@ def flatten(model, max_depth=24, max_tris=None, lines=None):
             if "depth/size limit reached" not in model.warnings:
                 model.warnings.append("depth/size limit reached")
             return
-        if d.id not in cache:
-            cache[d.id] = definition_tris(d)
-        emit(cache[d.id], m)
+        if id(d) not in cache:   # object identity: the root (id 0) and a real definition with id 0 must not share an entry
+            cache[id(d)] = definition_tris(d)
+        emit(cache[id(d)], m)
         if lines is not None:
             for a, b in d.edges.values():
                 if a in d.vertices and b in d.vertices:
                     for p in (d.vertices[a], d.vertices[b]):
                         x, y, z = _mul(m, p)
                         lines.extend((x * INCH, z * INCH, -y * INCH))
-        path.add(d.id)
+        path.add(id(d))
         for inst in d.instances:
             sub = model.defs.get(inst["def_id"])
             if sub is None:
                 continue
-            if sub.id in path:
+            if id(sub) in path:
                 w = "instance cycle: a definition contains itself (corrupt file); the cyclic instance is NOT placed"
                 if w not in model.warnings:
                     model.warnings.append(w)
                 continue
             walk(sub, _compose(m, inst["matrix"]), depth + 1)
-        path.discard(d.id)
+        path.discard(id(d))
 
     walk(model.root, IDENT, 0)
     return res

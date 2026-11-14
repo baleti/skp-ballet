@@ -703,3 +703,18 @@ def test_indirect_cycles_cut_in_flatten_and_cache(shape):
     _, batches = cache.build(m)
     assert time.time() - t < 2 and sum(bb["nt"] for bb in batches.values()) == expect_cache
     assert any("instance cycle" in w for w in m.warnings)
+
+
+def test_definition_with_root_id_zero_is_not_mistaken_for_a_cycle():
+    """267: the cycle guard keys on object identity; a real definition whose id equals the root's id (0) is placed."""
+    from skpballet import scene, mesh
+    ident = (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0)
+    m = scene.Model()
+    d = _tri_def(0, "Z")
+    m.defs = {0: d}
+    r = scene.Definition(0, "root")
+    r.instances = [dict(def_id=0, matrix=ident, id=1, name="")]
+    m.root = r
+    res = mesh.flatten(m)
+    assert sum(len(v) for v in res.values()) // 9 == 1
+    assert not any("cycle" in w for w in m.warnings)

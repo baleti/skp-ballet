@@ -47,10 +47,11 @@ def build(model, max_depth=24, edges=False):
                 if msg not in model.warnings:
                     model.warnings.append(msg)
                 return
-            if d.id not in cache:
-                cache[d.id] = mesh.definition_tris(d)
+            ck = -1 if d.id == -1 else id(d)   # identity key (root id 0 vs a real definition id 0); -1 is the per-element loose-geometry wrapper
+            if ck not in cache:
+                cache[ck] = mesh.definition_tris(d)
             flip = _flips(m)
-            for mat, tris in cache[d.id].items():
+            for mat, tris in cache[ck].items():
                 b = batch("tri", mat if mat in model.materials else None)
                 start = b["nt"]
                 for t in tris:
@@ -74,18 +75,18 @@ def build(model, max_depth=24, edges=False):
                         b["pos"].extend((x * INCH, z * INCH, -y * INCH)); b["eidx"].append(float(ei))
                     b["idx"].extend((b["nv"], b["nv"] + 1)); b["nv"] += 2; b["nt"] += 1
                 b["ranges"].extend((ei, start, b["nt"] - start))
-            path.add(d.id)
+            path.add(id(d))
             for inst in d.instances:
                 s = model.defs.get(inst["def_id"])
                 if s is None:
                     continue
-                if s.id in path:   # a definition containing itself: corrupt file, do not expand it
+                if id(s) in path:   # a definition containing itself: corrupt file, do not expand it
                     w = "instance cycle: a definition contains itself (corrupt file); the cyclic instance is NOT placed"
                     if w not in model.warnings:
                         model.warnings.append(w)
                     continue
                 walk(s, _compose(m, inst["matrix"]), depth + 1, False)
-            path.discard(d.id)
+            path.discard(id(d))
         if sub_only:
             walk(d0, m0, 0, True)
         else:      # loose geometry only, not the instances (they are their own elements)

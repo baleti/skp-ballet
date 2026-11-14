@@ -294,6 +294,10 @@ def _load(skp):
                     gf = dn.first(0x1583)  # 1 for groups, 0 for components (observed on 4 public definitions)
                     d.is_group = bool(gf is not None and gf.uint())
                     _entities(ent, d, model)
+                    if did in model.defs:
+                        w = "duplicate definition id %s: the earlier definition is replaced (damaged file?)" % did
+                        if w not in model.warnings:
+                            model.warnings.append(w)
                     model.defs[did] = d
     model.root = Definition(0, "<model>")
     for r6 in top.find(0x1F6):
