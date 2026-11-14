@@ -129,6 +129,11 @@ def serve(glb, port=0, open_browser=True):
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):   # a legacy console codec (cp1252 on Windows) must not abort info on non-latin layer names
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
     a = list(sys.argv[1:] if argv is None else argv)
     if not a or a[0] in ("-h", "--help"):
         print(__doc__); return 0

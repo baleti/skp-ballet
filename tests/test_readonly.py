@@ -332,3 +332,15 @@ def test_export_time_warnings_are_printed_by_convert_and_cache(tmp_path, monkeyp
     assert "NOT placed" in capsys.readouterr().out
     assert cli.main(["cache", nest, str(tmp_path / "cc")]) == 0
     assert "NOT placed" in capsys.readouterr().out
+
+
+def test_info_survives_a_legacy_console_encoding(monkeypatch):
+    import io, sys
+    from skpballet import cli, scene, container
+    m = scene.Model(); d = scene.Definition(0, "Stuhl 中文 Ж"); m.root = scene.Definition(-1, "root")
+    d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}; d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]
+    m.defs[0] = d; m.layers[1] = "Ж中"
+    monkeypatch.setattr(scene, "load", lambda s: m); monkeypatch.setattr(container, "open_skp", lambda p: None)
+    buf = io.BytesIO(); monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(buf, encoding="cp1252", errors="strict"))
+    assert cli.main(["info", "f"]) == 0
+    sys.stdout.flush(); assert b"Stuhl" in buf.getvalue()
