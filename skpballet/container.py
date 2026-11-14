@@ -22,7 +22,7 @@ class SkpFile:
     def read(self, name):
         try:
             return self.zip.read(name)
-        except (zipfile.BadZipFile, zlib.error, NotImplementedError, EOFError, OSError, KeyError) as e:
+        except (zipfile.BadZipFile, zlib.error, NotImplementedError, EOFError, OSError, KeyError, RuntimeError) as e:
             raise SkpError("cannot read %s: %s" % (name, e))
 
     @property
@@ -77,12 +77,12 @@ def open_skp(src):
             sk.container_notes.append("no styles/*.xml member")
         try:
             bad = zf.testzip()
-        except (zipfile.BadZipFile, zlib.error, OSError, EOFError, NotImplementedError):
+        except (zipfile.BadZipFile, zlib.error, OSError, EOFError, NotImplementedError, RuntimeError):
             bad = "?"
         if bad:
             sk.container_notes.append("zip member %s fails its CRC check" % bad)
         if zf.comment:
             sk.container_notes.append("zip comment present (%d bytes)" % len(zf.comment))
         return sk
-    except (zipfile.BadZipFile, NotImplementedError, OSError, EOFError) as e:
+    except (zipfile.BadZipFile, NotImplementedError, OSError, EOFError, RuntimeError) as e:
         raise SkpError("corrupt container: %s" % e)

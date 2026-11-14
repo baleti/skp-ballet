@@ -299,3 +299,23 @@ def test_deflated_member_bitflips_never_silently_change_decoded_bytes():
                 continue
             zz = zipfile.ZipFile(io.BytesIO(bytes(b[z:])))
             assert zz.read(i.filename) == orig.read(i.filename), (i.filename, k)
+
+
+@pytest.mark.parametrize("what", ["encrypted", "method99", "bzip2"])
+def test_unsupported_member_flags_give_clean_error(what):
+    import struct
+    d = bytearray(open(NEST, "rb").read())
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    p = d.find(b"PK\x01\x02", z)
+    while p >= 0:
+        nl = struct.unpack_from("<H", d, p + 28)[0]
+        if bytes(d[p + 46:p + 46 + nl]) == b"model.dat":
+            break
+        p = d.find(b"PK\x01\x02", p + 4)
+    assert p >= 0
+    if what == "encrypted":
+        struct.pack_into("<H", d, p + 8, struct.unpack_from("<H", d, p + 8)[0] | 1)
+    else:
+        struct.pack_into("<H", d, p + 10, 99 if what == "method99" else 12)
+    with pytest.raises(container.SkpError):
+        scene.load(container.open_skp(bytes(d)))
