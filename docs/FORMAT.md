@@ -402,3 +402,13 @@ Resolved (2026-11-14): CImage is instance-shaped (pre, draw base, definition ref
 to the end of the list: 2 lists, 5 and 6 objects). With CImage parsed, `scan_lists` reaches the root list and `load_legacy` takes the
 LAST list as the model root when a file has a CImage and at least 2 lists; image.skp now shows the 10x10 in root face like openskp
 does. The image's picture quad (instance of Image0, hidden) is still not shown; only one public fixture has a CImage, so this rests on one file.
+
+## Legacy version coverage and version switches (2026-11-14)
+Public legacy fixtures exist for SketchUp file versions 3, 4, 5, 13, 17, 18, 19, 20 only. Versions 6-12 and 14-16 have NO fixture.
+Version-dependent switches in skpballet/legacy.py: the "no flag-mask byte after the attribute-container ref" rule is applied to
+every version <= 13 (calibrated on v13 alone; v5 follows the same code path without it being checked beyond v5's one fixture);
+truncation signals (tail_suspect, end marker check) only run for version >= 17 (calibrated on 2017-2020), so files of versions
+4-16 get no truncation detection except the missing-layer-table check (from v4). v3 and v4 decode 0 faces (INCOMPLETE; v5
+carries one extra byte before the first CVertex, cause not pinned). Guard: files of versions 6-12 and 14-16 raise an
+"UNTESTED version" warning that also trips --strict (tests/test_readonly.py). Remove it per version only once a public
+fixture of that version decodes and is cross-checked.
