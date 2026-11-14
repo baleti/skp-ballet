@@ -192,3 +192,37 @@ def test_header_vs_meta_version_mismatch_is_flagged():
     d[i:i + 2] = "6".encode("utf-16-le")
     m = scene.load(container.open_skp(bytes(d)))
     assert any("differs from meta/meta.dat" in w for w in m.warnings), m.warnings
+
+
+def _rezip(path, drop=None, flip_member=None):
+    import io, zipfile
+    d = open(path, "rb").read()
+    z = d.find(b"PK\x03\x04", 4, 4096)
+    src = zipfile.ZipFile(io.BytesIO(d[z:]))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as w:
+        for i in src.infolist():
+            if drop and drop(i.filename):
+                continue
+            w.writestr(i.filename, src.read(i.filename))
+    z2 = bytearray(out.getvalue())
+    if flip_member:
+        k = z2.find(flip_member)
+        z2[k + 30 + len(flip_member) + 1] ^= 0xFF
+    return d[:z] + bytes(z2)
+
+
+NEST = os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp")
+
+
+def test_missing_meta_dat_and_styles_warn_and_intact_does_not():
+    assert not scene.load(container.open_skp(NEST)).warnings
+    m = scene.load(container.open_skp(_rezip(NEST, drop=lambda n: n == "meta/meta.dat")))
+    assert any("meta/meta.dat is missing" in w for w in m.warnings), m.warnings
+    m = scene.load(container.open_skp(_rezip(NEST, drop=lambda n: n.startswith("styles/"))))
+    assert any("styles" in w for w in m.warnings), m.warnings
+
+
+def test_stored_member_crc_failure_warns():
+    m = scene.load(container.open_skp(_rezip(NEST, flip_member=b"meta/meta.dat")))
+    assert any("CRC" in w for w in m.warnings), m.warnings
