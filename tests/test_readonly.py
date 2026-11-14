@@ -477,3 +477,30 @@ def test_cache_glb_accessor_minmax_match_float32(src, tmp_path):
             v = js["bufferViews"][a["bufferView"]]
             vals = struct.unpack("<%df" % (a["count"] * 3), binb[v["byteOffset"]:v["byteOffset"] + a["count"] * 12])
             assert [min(vals[c::3]) for c in range(3)] == a["min"] and [max(vals[c::3]) for c in range(3)] == a["max"]
+
+
+def test_instance_scale_term_sizes_and_positions_in_cache_glb(tmp_path):
+    """254: instance A = diag 0.01 on a 100 in cube, B = identity with scale term 0.01 and x translation 2000:
+    both cubes are 1 inch (0.0254 m) and B sits 2000*0.01 = 20 in (0.508 m) from A."""
+    import struct
+    src = os.path.join(os.path.dirname(__file__), "data", "instance_scale_term_2021.skp")
+    assert cli.main(["cache", src, str(tmp_path / "c")]) == 0
+    js, binb = _glb_json_bin((tmp_path / "c" / "model.glb").read_bytes())
+    boxes = {}
+    for m in js["meshes"]:
+        p = m["primitives"][0]
+        if p["mode"] != 4:
+            continue
+        a, e = js["accessors"][p["attributes"]["POSITION"]], js["accessors"][p["attributes"]["_EIDX"]]
+        v, ve = js["bufferViews"][a["bufferView"]], js["bufferViews"][e["bufferView"]]
+        pos = struct.unpack("<%df" % (a["count"] * 3), binb[v["byteOffset"]:v["byteOffset"] + a["count"] * 12])
+        ei = struct.unpack("<%df" % a["count"], binb[ve["byteOffset"]:ve["byteOffset"] + a["count"] * 4])
+        for i, k in enumerate(ei):
+            lo, hi = boxes.setdefault(k, ([1e9] * 3, [-1e9] * 3))
+            for c in range(3):
+                lo[c], hi[c] = min(lo[c], pos[3 * i + c]), max(hi[c], pos[3 * i + c])
+    assert len(boxes) == 2
+    (la, ha), (lb, hb) = [boxes[k] for k in sorted(boxes)]
+    for lo, hi in ((la, ha), (lb, hb)):
+        assert all(abs((h - l) - 0.0254) < 1e-6 for l, h in zip(lo, hi))
+    assert abs((lb[0] - la[0]) - 0.508) < 1e-5
