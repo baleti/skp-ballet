@@ -718,3 +718,21 @@ def test_definition_with_root_id_zero_is_not_mistaken_for_a_cycle():
     res = mesh.flatten(m)
     assert sum(len(v) for v in res.values()) // 9 == 1
     assert not any("cycle" in w for w in m.warnings)
+
+
+@pytest.mark.parametrize("kind", ["glb", "cache"])
+@pytest.mark.parametrize("mat", [[float("nan")] + [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 1, float("inf"), 0, 0, 1],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 1, 1e300, 0, 0, 1],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, float("nan")]])
+def test_non_finite_instance_matrix_is_refused_never_written(kind, mat, tmp_path):
+    """NaN/inf/absurd instance transforms must end in a clean ValueError and no output file (never a GLB with NaN)."""
+    from skpballet import mesh, cache, scene
+    m = scene.Model(); m.root = scene.Definition(-1, "root")
+    d = scene.Definition(0, "d"); d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]; m.defs[0] = d
+    m.root.instances = [dict(def_id=0, matrix=mat, name="x", id=None)]
+    out = tmp_path / ("o.glb" if kind == "glb" else "c")
+    with pytest.raises(ValueError):
+        mesh.write_glb(m, str(out)) if kind == "glb" else cache.write_cache(m, str(out), "x.skp")
+    assert not out.exists() or (out.is_dir() and not (out / "meta.json").exists())
