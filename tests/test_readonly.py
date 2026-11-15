@@ -805,3 +805,17 @@ def test_wrong_face_area_is_warned_and_good_faces_are_not():
         w = []; mesh.definition_tris(d, w); return w
     assert run([[(2, 2), (4, 2), (4, 4), (2, 4)]]) == []
     assert run([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 2), (6, 2), (6, 4), (4, 4)]])   # edge-sharing holes (known wrong area)
+
+
+@pytest.mark.parametrize("name", ["ünï côdé.skp", "with space .skp", "日本語.skp", "a'b\"c.skp", "a" * 200 + ".skp"])
+def test_odd_file_names_work_for_info_convert_cache(name, tmp_path):
+    import glob, shutil, hashlib
+    from skpballet import cli
+    src = sorted(glob.glob(os.path.join(os.path.dirname(__file__), "data", "*.skp")))[0]
+    dst = tmp_path / name
+    shutil.copy(src, dst)
+    before = hashlib.sha256(dst.read_bytes()).hexdigest()
+    assert cli.main(["convert", str(dst), str(tmp_path / "o.glb")]) in (0, None)
+    assert cli.main(["cache", str(dst), str(tmp_path / "c d")]) in (0, None)
+    assert (tmp_path / "o.glb").stat().st_size > 0 and (tmp_path / "c d" / "meta.json").exists()
+    assert hashlib.sha256(dst.read_bytes()).hexdigest() == before
