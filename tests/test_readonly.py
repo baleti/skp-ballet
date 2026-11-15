@@ -789,3 +789,19 @@ def test_touching_holes_keep_exact_area(holes, area):
     L = lambda pts: [(x, y, 0) for x, y in pts]
     P, t = mesh.triangulate([L([(0, 0), (10, 0), (10, 10), (0, 10)])] + [L(h) for h in holes], (0, 0, 1))
     assert abs(_tri_area(P, t) - area) < 1e-6
+
+
+def test_wrong_face_area_is_warned_and_good_faces_are_not():
+    from skpballet import mesh, scene
+    def run(holes):
+        d = scene.Definition(0, "d"); vs = [(0, 0), (10, 0), (10, 10), (0, 10)]
+        loops = [list(range(4))]; d.vertices = {i: (x, y, 0) for i, (x, y) in enumerate(vs)}
+        for h in holes:
+            ids = []
+            for x, y in h:
+                d.vertices[len(d.vertices)] = (x, y, 0); ids.append(len(d.vertices) - 1)
+            loops.append(ids)
+        d.faces = [dict(id=0, loops=loops, mat=None, normal=(0, 0, 1))]
+        w = []; mesh.definition_tris(d, w); return w
+    assert run([[(2, 2), (4, 2), (4, 4), (2, 4)]]) == []
+    assert run([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 2), (6, 2), (6, 4), (4, 4)]])   # edge-sharing holes (known wrong area)

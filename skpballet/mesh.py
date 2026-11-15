@@ -358,8 +358,40 @@ def definition_tris(d, warnings=None):
             continue
         nrm = f["normal"] or (0, 0, 1)
         P, tr = triangulate(loops, nrm)
+        if warnings is not None and _area_mismatch(loops, nrm, P, tr):
+            w = "triangulated face area differs by more than 1%% from outer minus holes in at least one face (degenerate loops?): "\
+                "geometry of such faces may be wrong"
+            if w not in warnings:
+                warnings.append(w)
         out.setdefault(f["mat"], []).extend((P[a], P[b], P[c]) for a, b, c in tr)
     return out
+
+
+def _newell(loop):
+    x = y = z = 0.0
+    for i, p in enumerate(loop):
+        q = loop[(i + 1) % len(loop)]
+        x += (p[1] - q[1]) * (p[2] + q[2]); y += (p[2] - q[2]) * (p[0] + q[0]); z += (p[0] - q[0]) * (p[1] + q[1])
+    return x / 2, y / 2, z / 2
+
+
+def _area_mismatch(loops, nrm, P, tr, tol=0.01):
+    """True if the triangle area (projected on the face normal) differs from outer minus holes by more than tol"""
+    loops = [l for l in loops if len(l) >= 3]
+    if not loops or len(loops[0]) < 3:
+        return False
+    nl = math.sqrt(sum(c * c for c in nrm)) or 1.0
+    def proj(v):
+        return abs((v[0] * nrm[0] + v[1] * nrm[1] + v[2] * nrm[2]) / nl)
+    outer = proj(_newell(loops[0]))
+    want = outer - sum(proj(_newell(h)) for h in loops[1:])
+    got = 0.0
+    for a, b, c in tr:
+        pa, pb, pc = P[a], P[b], P[c]
+        u = (pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]); v = (pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2])
+        cx, cy, cz = u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]
+        got += abs(cx * nrm[0] + cy * nrm[1] + cz * nrm[2]) / nl / 2
+    return abs(got - want) > tol * max(abs(want), outer * 1e-3, 1e-12)
 
 
 MAX_TRIS = 5_000_000   # triangles emitted per export (flatten and cache)
