@@ -201,6 +201,8 @@ def test_rvt_ballet_cache_consistent(f, tmp_path):
     meta = json.loads((tmp_path / "meta.json").read_text())
     assert meta["phase"] == "done" and len(meta["elements"]) == r["elements"] > 0
     assert (tmp_path / "materials.json").exists()
+    assert sorted(l["name"] for l in meta["skpLayers"]) == sorted(m.layers.values())
+    assert sorted(l["name"] for l in meta["skpLayers"] if l["off"]) == sorted(m.layers[i] for i in m.layers_off)
     d = (tmp_path / "model.glb").read_bytes()
     j = json.loads(d[20:20 + struct.unpack_from("<I", d, 12)[0]])
     assert len(j["meshes"]) == len(meta["batches"])

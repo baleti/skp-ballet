@@ -174,6 +174,7 @@ def write_cache(model, outdir, name="model.skp", edges=False, strict=False):
     meta = dict(file=name, levels=[], grids=[], rooms=[], views=[], sheets=[], fidLabels={"mesh": "triangle mesh from the SketchUp file"}, phases=[],
                 defaultHidden=[], stamps={"reader": "skp-ballet", "viewer": "skp-ballet"}, phase="done", batches=bmeta, bbox=bb,
                 coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp", warnings=list(model.warnings),
+                skpLayers=[dict(name=n, off=(i in model.layers_off)) for i, n in sorted(model.layers.items())],   # off flag 0x3C8E is unverified
                 glbSha1=hashlib.sha1(glb).hexdigest(), glbBytes=len(glb))   # lets a reader detect a meta.json/model.glb pair from two different writers
     with mesh.atomic_open(os.path.join(outdir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, separators=(",", ":"))
