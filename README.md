@@ -30,7 +30,7 @@ of 2143, area error under 1e-4, synthetic only; the area self-check still warns 
 percent; not re-measured since the hole changes, no real files on this host). See docs/FORMAT.md; every warning the tool can raise is explained in docs/WARNINGS.md.
 
 The viewer loads three.js from `../rvt-ballet/web/vendor` or `$SKP_BALLET_VENDOR`.
-Tests: `python3 -m pytest tests` (657 collected, about 2 to 4 minutes). Licenses: LICENSES.md.
+Tests: `python3 -m pytest tests` (667 collected, about 2 to 4 minutes). Licenses: LICENSES.md.
 
 ## Truncated or partial files
 
