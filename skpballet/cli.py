@@ -209,3 +209,7 @@ def main(argv=None):
     except (ValueError, OSError) as e:
         print("skp-ballet: %s" % _clean(str(e)), file=sys.stderr)
         return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
