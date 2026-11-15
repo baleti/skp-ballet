@@ -989,7 +989,7 @@ def test_cell_holes_sharing_edges_and_corners_fuzz():
     import random
     from skpballet import mesh
     rnd = random.Random(274)
-    bad = []
+    bad, bad_edge_only, tested = [], [], 0
     for it in range(400):
         S = rnd.choice([6, 8])
         cells = {(x, y) for x in range(1, S - 1) for y in range(1, S - 1) if rnd.random() < 0.4}
@@ -1003,15 +1003,19 @@ def test_cell_holes_sharing_edges_and_corners_fuzz():
             free.add(c); stack += [(c[0] + 1, c[1]), (c[0] - 1, c[1]), (c[0], c[1] + 1), (c[0], c[1] - 1)]
         if len(free) != S * S - len(cells):
             continue
-        if any((x + dx, y + dy) in cells and (x + dx, y) not in cells and (x, y + dy) not in cells
-               for (x, y) in cells for dx in (-1, 1) for dy in (-1, 1)):
-            continue   # known limit: holes (or one merged hole) touching only at corners in chains are still triangulated wrongly (warned)
         loops = [[(0, 0, 0.0), (S, 0, 0.0), (S, S, 0.0), (0, S, 0.0)]]
         for (x, y) in sorted(cells):
             c = [(x, y, 0.0), (x + 1, y, 0.0), (x + 1, y + 1, 0.0), (x, y + 1, 0.0)]
             loops.append(c if rnd.random() < 0.5 else c[::-1])
         P, tr = mesh.triangulate(loops, (0, 0, 1))
         got = _tri_area(P, tr)
+        tested += 1
         if abs(got - (S * S - len(cells))) > 1e-6:
-            bad.append((S, sorted(cells), got - (S * S - len(cells))))
-    assert not bad, [(b[0], b[1], b[2]) for b in bad[:1]]
+            bad.append((S, sorted(cells)))
+            corner = any((x + dx, y + dy) in cells and (x + dx, y) not in cells and (x, y + dy) not in cells
+                         for (x, y) in cells for dx in (-1, 1) for dy in (-1, 1))
+            if not corner:
+                bad_edge_only.append((S, sorted(cells)))
+    assert not bad_edge_only, bad_edge_only[:1]   # edge-sharing without corner-only contacts must be exact
+    # corner-only contact chains: spliced-ring fallback fixes most; a small rest with complex self-touching rings stays wrong (warned)
+    assert tested > 250 and len(bad) * 100 <= tested * 3, (len(bad), tested)

@@ -171,6 +171,29 @@ def _merge_edge_sharing_holes(holes):
     return holes
 
 
+def _merge_corner_touching_holes(holes):
+    """Fallback for holes that touch other holes at single points (chains of corner contacts): two rings sharing a point are
+    spliced into one pinched ring (point visited twice), which the pinch handling of the triangulator understands."""
+    holes = [list(h) for h in holes]
+    done = False
+    while not done and len(holes) > 1:
+        done = True
+        for ia in range(len(holes)):
+            for ib in range(ia + 1, len(holes)):
+                A, B = holes[ia], holes[ib]
+                common = next((p for p in A if p in B), None)
+                if common is None:
+                    continue
+                i, j = A.index(common), B.index(common)
+                holes[ia] = A[:i + 1] + B[j + 1:] + B[:j + 1] + A[i + 1:]
+                del holes[ib]
+                done = False
+                break
+            if not done:
+                break
+    return holes
+
+
 def triangulate(loops3d, normal, _split=True):
     """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples).
     A face with holes whose triangle area is off (exact ties/colinearity in the 2D working plane confuse the bridge and ear
@@ -187,6 +210,12 @@ def triangulate(loops3d, normal, _split=True):
                 best, be = (P2, t2), e
             if be <= 1e-6:
                 break
+        if be > 1e-6 and len(loops3d) > 2:   # chains of corner-touching holes: retry with touching holes spliced into pinched rings
+            L2 = [loops3d[0]] + _merge_corner_touching_holes(loops3d[1:])
+            if len(L2) < len(loops3d):
+                P2, t2 = _triangulate(L2, normal, _split, 0.0)
+                if _area_err(loops3d, normal, P2, t2) < be:
+                    best, be = (P2, t2), _area_err(loops3d, normal, P2, t2)
         return best
     return P, tr
 
