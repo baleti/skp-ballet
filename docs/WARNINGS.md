@@ -31,11 +31,17 @@ checks every one of them still does.
 - `model.dat:` record lengths do not tile, or trailing bytes: damaged or padded stream.
 - `materials:` and `styles:` entries that are not well-formed XML or have bad colours (defaults used).
 - `legacy file has a run of`: long 0x00 or 0xFF runs that intact files do not contain.
-- `legacy file: no layer table found`, `unusual amount of data after the last entity list`, `no known end marker`:
-  a 2013-2020 file may be truncated and still load with partial geometry.
+- `legacy file: no layer table found`: the file may be truncated (header only).
+- `legacy file: unusual amount of data`: bytes after the last entity list; the geometry may be partial.
+- `legacy files have no known end marker`: a truncated 2013-2020 file can load with partial geometry and no error.
+- `legacy file: ` followed by a count of faces whose stored plane disagrees with the loop geometry: damaged data.
+- `face edge`: a face names an edge that does not exist (damaged data).
+- `extra or damaged data`: malformed container pieces (zip CRC, missing members, header vs meta version, bad XML).
 
 ## Experimental legacy (2013-2020) reader
 - `legacy 2013-2020 reader is experimental`: only the first entity list is decoded.
 - `legacy definition tree`: instance-to-definition links are inferred from slot order.
+- `legacy file has components/groups but their lists do not fit`: instances are NOT placed.
+- `legacy file has ` ... `entity lists but the definition tree was rejected`: only the first list is shown.
 - `legacy file is SketchUp version`: a version with no public fixture.
 - `legacy file contains an image`: the shown entity list may be the image's own face.

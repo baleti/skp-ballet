@@ -913,3 +913,33 @@ def test_warnings_doc_matches_source():
     src = "".join(open(f, encoding="utf-8").read() for f in glob.glob(os.path.join(root, "skpballet", "*.py")))
     missing = [a for a in anchors if a not in src]
     assert not missing, missing
+
+
+def test_every_warning_in_the_source_is_documented():
+    """Code-to-doc drift: every warnings.append/extend site (found by AST, the text taken from the literal or from the variable
+    it was assigned from) must contain at least one phrase documented in docs/WARNINGS.md."""
+    import ast, glob, re
+    root = os.path.join(os.path.dirname(__file__), "..")
+    doc = open(os.path.join(root, "docs", "WARNINGS.md"), encoding="utf-8").read()
+    anchors = [a.rstrip(":") for a in re.findall(r"^- `([^`]+)`", doc, re.M)] + ["NOT in this export", "singular transform", "non-finite or absurd", "scale 0"]
+    strs = lambda n: "".join(x.value for x in ast.walk(n) if isinstance(x, ast.Constant) and isinstance(x.value, str))
+    bad, sites = [], 0
+    for f in sorted(glob.glob(os.path.join(root, "skpballet", "*.py"))):
+        t = ast.parse(open(f, encoding="utf-8").read())
+        assigns = {}
+        for n in ast.walk(t):
+            if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+                assigns.setdefault(n.targets[0].id, []).append(strs(n.value))
+        for n in ast.walk(t):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in ("append", "extend") \
+                    and "warn" in ast.unparse(n.func.value) and n.args:
+                a = n.args[0]
+                texts = assigns.get(a.id, []) if isinstance(a, ast.Name) else [strs(a)]
+                for tx in texts:
+                    if len(tx) < 20:   # an unrelated variable of the same name (e.g. a matrix), not message text
+                        continue
+                    sites += 1
+                    if not any(k in tx for k in anchors):
+                        bad.append((os.path.basename(f), n.lineno, tx[:60]))
+    assert sites >= 25
+    assert not bad, bad
