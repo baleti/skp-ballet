@@ -114,6 +114,42 @@ def _insert_touching(loop):
     return [q for pts in out for q in pts] if found else loop
 
 
+def _insert_hole_touches(outer, holes):
+    """A hole vertex lying on the interior of an outer-ring edge (T-touch) is inserted into that edge, so the bridge phase sees the
+    contact as a shared ring vertex (it only recognises touching at existing vertices)."""
+    n = len(outer)
+    if n < 3 or sum(len(h) for h in holes) * n > 300000:
+        return outer
+    add = {}   # edge index -> [(t, point)]
+    for h in holes:
+        mine = {}
+        for p in h:
+            for j in range(n):
+                a, b = outer[j], outer[(j + 1) % n]
+                if p == a or p == b:
+                    continue
+                dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+                L2 = dx * dx + dy * dy + dz * dz
+                if L2 == 0:
+                    continue
+                t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy + (p[2] - a[2]) * dz) / L2
+                if t <= 1e-9 or t >= 1 - 1e-9:
+                    continue
+                qx, qy, qz = a[0] + t * dx - p[0], a[1] + t * dy - p[1], a[2] + t * dz - p[2]
+                if qx * qx + qy * qy + qz * qz <= 1e-14 * max(L2, 1.0):
+                    mine.setdefault(j, []).append((t, p))
+        for j, lst in mine.items():
+            for item in lst:
+                if all(q != item[1] for _, q in add.get(j, ())):
+                    add.setdefault(j, []).append(item)
+    if not add:
+        return outer
+    out = []
+    for j in range(n):
+        out.append(outer[j]); out.extend(q for _, q in sorted(add.get(j, ())))
+    return out
+
+
 def _split_pinched(loop):
     """Split a loop that visits the same 3D point twice into simple loops (pieces between the repeats)."""
     out, stack, seen = [], [], {}
@@ -218,7 +254,21 @@ def triangulate(loops3d, normal, _split=True):
     tests) is retried with the 2D basis rotated by a few arbitrary angles; the best result wins."""
     if len(loops3d) > 2:
         loops3d = [loops3d[0]] + _merge_edge_sharing_holes(loops3d[1:])
-    P, tr = _triangulate(loops3d, normal, _split, 0.0)
+    P = tr = None
+    if len(loops3d) > 1:
+        ins = [_insert_hole_touches(loops3d[0], loops3d[1:])] + loops3d[1:]
+        if len(ins[0]) != len(loops3d[0]):   # hole vertices lie on outer edges: use the outer with them inserted, unless that is worse (a hole running along an outer edge)
+            P, tr = _triangulate(ins, normal, _split, 0.0)
+            if _area_mismatch(ins, normal, P, tr, 1e-6):
+                P0, t0 = _triangulate(loops3d, normal, _split, 0.0)
+                if _area_err(loops3d, normal, P0, t0) < _area_err(loops3d, normal, P, tr):
+                    P, tr = P0, t0
+                else:
+                    loops3d = ins
+            else:
+                loops3d = ins
+    if P is None:
+        P, tr = _triangulate(loops3d, normal, _split, 0.0)
     if len(loops3d) > 1 and len(P) <= 3000 and _area_mismatch(loops3d, normal, P, tr, 1e-6):   # size cap: retries cost up to 5x on hopeless faces
         best, be = (P, tr), _area_err(loops3d, normal, P, tr)
         for ang in (0.3711, 1.0173, 2.2391, 4.0877):

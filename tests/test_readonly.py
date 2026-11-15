@@ -1140,3 +1140,13 @@ def test_touching_triangle_holes_shrink_ladder():
     loops = [[(0, 0, 0.0), (8, 0, 0.0), (8, 8, 0.0), (0, 8, 0.0)]] + [[(x, y, 0.0) for x, y in t] for t in hs]
     P, tr = mesh.triangulate(loops, (0, 0, 1))
     assert abs(_tri_area(P, tr) - 60.5) < 0.01
+
+
+def test_hole_vertex_on_outer_edge_is_exact_without_the_shrink_ladder():
+    """T-touch of a hole vertex on an outer-ring edge: three triangle holes (two touching each other, (3,8) on the top edge, (8,4)
+    on the right edge) gave area 60 instead of 62.5 before the vertex was inserted into the outer ring."""
+    from skpballet import mesh
+    hs = [((3, 7), (4, 7), (3, 8)), ((4, 6), (5, 7), (4, 7)), ((7, 4), (8, 4), (7, 5))]
+    loops = [[(0, 0, 0.0), (8, 0, 0.0), (8, 8, 0.0), (0, 8, 0.0)]] + [[(x, y, 0.0) for x, y in t] for t in hs]
+    P, tr = mesh.triangulate(loops, (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 62.5) < 1e-9
