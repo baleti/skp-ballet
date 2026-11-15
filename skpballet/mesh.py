@@ -114,6 +114,9 @@ def _insert_touching(loop):
     return [q for pts in out for q in pts] if found else loop
 
 
+_SHRINK_LADDER = (1e-6, 1e-4, 1e-3)   # tests set this to () to see which faces the exact paths cannot do
+
+
 def _insert_hole_touches(outer, holes):
     """A hole vertex lying on the interior of an outer-ring edge (T-touch) is inserted into that edge, so the bridge phase sees the
     contact as a shared ring vertex (it only recognises touching at existing vertices)."""
@@ -248,29 +251,13 @@ def _merge_corner_touching_holes(holes):
     return holes
 
 
-def triangulate(loops3d, normal, _split=True):
-    """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples).
-    A face with holes whose triangle area is off (exact ties/colinearity in the 2D working plane confuse the bridge and ear
-    tests) is retried with the 2D basis rotated by a few arbitrary angles; the best result wins."""
-    if len(loops3d) > 2:
-        loops3d = [loops3d[0]] + _merge_edge_sharing_holes(loops3d[1:])
-    P = tr = None
-    if len(loops3d) > 1:
-        ins = [_insert_hole_touches(loops3d[0], loops3d[1:])] + loops3d[1:]
-        if len(ins[0]) != len(loops3d[0]):   # hole vertices lie on outer edges: use the outer with them inserted, unless that is worse (a hole running along an outer edge)
-            P, tr = _triangulate(ins, normal, _split, 0.0)
-            if _area_mismatch(ins, normal, P, tr, 1e-6):
-                P0, t0 = _triangulate(loops3d, normal, _split, 0.0)
-                if _area_err(loops3d, normal, P0, t0) < _area_err(loops3d, normal, P, tr):
-                    P, tr = P0, t0
-                else:
-                    loops3d = ins
-            else:
-                loops3d = ins
-    if P is None:
-        P, tr = _triangulate(loops3d, normal, _split, 0.0)
+def _exact_attempts(loops3d, normal, _split):
+    """Plain triangulation, then retries (rotated 2D basis, corner-touching holes spliced into pinched rings) while the area is off.
+    Returns ((points, tris), area error)."""
+    P, tr = _triangulate(loops3d, normal, _split, 0.0)
+    be = _area_err(loops3d, normal, P, tr) if len(loops3d) > 1 else 0.0
+    best = (P, tr)
     if len(loops3d) > 1 and len(P) <= 3000 and _area_mismatch(loops3d, normal, P, tr, 1e-6):   # size cap: retries cost up to 5x on hopeless faces
-        best, be = (P, tr), _area_err(loops3d, normal, P, tr)
         for ang in (0.3711, 1.0173, 2.2391, 4.0877):
             P2, t2 = _triangulate(loops3d, normal, _split, ang)
             e = _area_err(loops3d, normal, P2, t2)
@@ -282,21 +269,44 @@ def triangulate(loops3d, normal, _split=True):
             L2 = [loops3d[0]] + _merge_corner_touching_holes(loops3d[1:])
             if len(L2) < len(loops3d):
                 P2, t2 = _triangulate(L2, normal, _split, 0.0)
-                if _area_err(loops3d, normal, P2, t2) < be:
-                    best, be = (P2, t2), _area_err(loops3d, normal, P2, t2)
-        if be > 1e-6 and len(loops3d) > 2:   # last resort: holes that still touch each other are shrunk toward their centroid, which un-touches them. 1e-6 first; near-touching holes can still confuse the bridge, so 1e-4 and 1e-3 follow. Accepted only if it improves the area and stays within 1e-4 + 2*f (relative error the shrink itself costs)
-            def shrink(h, f):
-                n = len(h); c = [sum(p[k] for p in h) / n for k in range(3)]
-                return [tuple(p[k] + (c[k] - p[k]) * f for k in range(3)) for p in h]
-            for f in (1e-6, 1e-4, 1e-3):
-                P2, t2 = _triangulate([loops3d[0]] + [shrink(h, f) for h in loops3d[1:]], normal, _split, 0.0)
                 e = _area_err(loops3d, normal, P2, t2)
-                if e < be and e <= 1e-4 + 2 * f:
+                if e < be:
                     best, be = (P2, t2), e
-                if be <= 1e-4:
-                    break
-        return best
-    return P, tr
+    return best, be
+
+
+def triangulate(loops3d, normal, _split=True):
+    """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples).
+    A face with holes whose triangle area is off (exact ties/colinearity in the 2D working plane confuse the bridge and ear
+    tests) is retried: rotated 2D basis, spliced corner-touching holes, hole vertices on outer edges inserted into the outer
+    ring (or not), and as a last resort holes shrunk by 1e-6..1e-3; the best result wins."""
+    if len(loops3d) > 2:
+        loops3d = [loops3d[0]] + _merge_edge_sharing_holes(loops3d[1:])
+    if len(loops3d) < 2:
+        return _triangulate(loops3d, normal, _split, 0.0)
+    bases = [loops3d]
+    ins = [_insert_hole_touches(loops3d[0], loops3d[1:])] + loops3d[1:]
+    if len(ins[0]) != len(loops3d[0]):   # hole vertices lie on outer edges: try with them inserted into the outer ring first
+        bases.insert(0, ins)
+    best = bb = be = None
+    for base in bases:
+        r, e = _exact_attempts(base, normal, _split)
+        if best is None or e < be:
+            best, be, bb = r, e, base
+        if be <= 1e-6:
+            break
+    if be > 1e-6 and len(bb) > 2 and len(best[0]) <= 3000:   # last resort: holes that still touch each other are shrunk toward their centroid, which un-touches them. 1e-6 first; near-touching holes can still confuse the bridge, so 1e-4 and 1e-3 follow. Accepted only if it improves the area and stays within 1e-4 + 2*f (relative error the shrink itself costs)
+        def shrink(h, f):
+            n = len(h); c = [sum(p[k] for p in h) / n for k in range(3)]
+            return [tuple(p[k] + (c[k] - p[k]) * f for k in range(3)) for p in h]
+        for f in _SHRINK_LADDER:
+            P2, t2 = _triangulate([bb[0]] + [shrink(h, f) for h in bb[1:]], normal, _split, 0.0)
+            e = _area_err(bb, normal, P2, t2)
+            if e < be and e <= 1e-4 + 2 * f:
+                best, be = (P2, t2), e
+            if be <= 1e-4:
+                break
+    return best
 
 
 def _triangulate(loops3d, normal, _split, ang):
