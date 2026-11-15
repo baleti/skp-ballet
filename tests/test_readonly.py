@@ -163,7 +163,8 @@ def test_outputs_carry_the_warnings(tmp_path):
     assert any("damaged data" in x for x in json.load(open(tmp_path / "c" / "meta.json"))["warnings"])
     good = os.path.join(os.path.dirname(__file__), "data", "arcs_2021.skp")
     assert cli.main(["cache", good, str(tmp_path / "g")]) == 0
-    assert json.load(open(tmp_path / "g" / "meta.json"))["warnings"] == []
+    # arcs_2021 holds 12 loose arc edges that the default cache leaves out: that is the only warning an intact file may carry
+    assert [w for w in json.load(open(tmp_path / "g" / "meta.json"))["warnings"] if "loose edge" not in w] == []
 
 
 def test_legacy_plane_misfit_is_warned(tmp_path):
@@ -871,3 +872,21 @@ def test_unexported_annotations_and_texts_are_warned(kind, tmp_path):
     m.root.annotations = [dict(kind="guide point", point=(0, 0, 0))]; m.root.texts = [dict(text="t", x=0, y=0)]
     mesh.write_glb(m, str(tmp_path / "o.glb")) if kind == "glb" else cache.write_cache(m, str(tmp_path / "c"), "x.skp")
     assert any("1 annotation(s)" in w and "1 screen text(s)" in w and "NOT in this export" in w for w in m.warnings)
+
+
+def test_cache_warns_about_loose_edges_only(tmp_path):
+    from skpballet import cache, scene
+    def mk(loose):
+        m = scene.Model(); m.root = scene.Definition(-1, "root")
+        m.root.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0), 3: (5, 5, 0), 4: (6, 5, 0)}
+        m.root.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]
+        m.root.edges = {0: (0, 1), 1: (1, 2), 2: (2, 0)}
+        if loose:
+            m.root.edges[3] = (3, 4)
+        return m
+    a, b = mk(False), mk(True)
+    cache.write_cache(a, str(tmp_path / "a"), "x.skp"); cache.write_cache(b, str(tmp_path / "b"), "x.skp")
+    assert not any("loose edge" in w for w in a.warnings)   # face boundaries are not loose: no noise on normal models
+    assert any("1 loose edge(s)" in w for w in b.warnings)
+    c = mk(True); cache.write_cache(c, str(tmp_path / "c"), "x.skp", edges=True)
+    assert not any("loose edge" in w for w in c.warnings)

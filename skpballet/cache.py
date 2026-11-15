@@ -28,6 +28,20 @@ def _elements(model):
 def build(model, max_depth=24, edges=False):
     """-> (elements, batches). batches: dict key -> dict(kind, mat, pos, eidx, idx, ranges)"""
     mesh.note_unexported(model)
+    if not edges:
+        ne = 0   # loose edges only: edges that bound no face (face boundaries are implied by the faces)
+        for d in list(model.defs.values()) + [model.root]:
+            if d is None or not d.edges:
+                continue
+            used = set()
+            for f in d.faces:
+                for lp in f["loops"]:
+                    for i in range(len(lp)):
+                        used.add(frozenset((lp[i - 1], lp[i])))
+            ne += sum(1 for a, b in d.edges.values() if frozenset((a, b)) not in used)
+        w = "%d loose edge(s) (bounding no face) are in the file but not in this cache (edges are off by default; use --edges)" % ne
+        if ne and w not in model.warnings:
+            model.warnings.append(w)
     batches = {}
     elements = []
 
