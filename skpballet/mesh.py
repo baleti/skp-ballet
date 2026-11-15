@@ -126,7 +126,24 @@ def _split_pinched(loop):
 
 
 def triangulate(loops3d, normal, _split=True):
-    """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples)."""
+    """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples).
+    A face with holes whose triangle area is off (exact ties/colinearity in the 2D working plane confuse the bridge and ear
+    tests) is retried with the 2D basis rotated by a few arbitrary angles; the best result wins."""
+    P, tr = _triangulate(loops3d, normal, _split, 0.0)
+    if len(loops3d) > 1 and _area_mismatch(loops3d, normal, P, tr, 1e-6):
+        best, be = (P, tr), _area_err(loops3d, normal, P, tr)
+        for ang in (0.3711, 1.0173, 2.2391, 4.0877):
+            P2, t2 = _triangulate(loops3d, normal, _split, ang)
+            e = _area_err(loops3d, normal, P2, t2)
+            if e < be:
+                best, be = (P2, t2), e
+            if be <= 1e-6:
+                break
+        return best
+    return P, tr
+
+
+def _triangulate(loops3d, normal, _split, ang):
     if _split and len(loops3d) == 1:
         parts = _split_pinched(_insert_touching(loops3d[0]))
         if len(parts) > 1 or len(parts[0]) != len(loops3d[0]):   # loop touches itself or has a zero-width spike at a repeated vertex: triangulate each simple piece
@@ -144,7 +161,7 @@ def triangulate(loops3d, normal, _split=True):
             groups = [[parts[big]] + holes] + [[pt] for pt in rest]
             P3, tris = [], []
             for g in groups:
-                sp, st = triangulate(g, normal, _split=False)
+                sp, st = _triangulate(g, normal, False, ang)
                 off = len(P3); P3.extend(sp); tris.extend((a + off, b + off, c + off) for a, b, c in st)
             return P3, tris
     nx, ny, nz = normal
@@ -155,6 +172,9 @@ def triangulate(loops3d, normal, _split=True):
     ul = math.sqrt(sum(c * c for c in ux)) or 1.0
     ux = tuple(c / ul for c in ux)
     uy = (ny * ux[2] - nz * ux[1], nz * ux[0] - nx * ux[2], nx * ux[1] - ny * ux[0])
+    if ang:   # rotate the 2D basis about the normal
+        ca, sa = math.cos(ang), math.sin(ang)
+        ux, uy = tuple(ca * a + sa * b for a, b in zip(ux, uy)), tuple(-sa * a + ca * b for a, b in zip(ux, uy))
     P3, P2, rings = [], [], []
     for li, lp in enumerate(loops3d):
         ids = []
@@ -377,9 +397,14 @@ def _newell(loop):
 
 def _area_mismatch(loops, nrm, P, tr, tol=0.01):
     """True if the triangle area (projected on the face normal) differs from outer minus holes by more than tol"""
+    return _area_err(loops, nrm, P, tr) > tol
+
+
+def _area_err(loops, nrm, P, tr):
+    """relative difference between the triangle area (projected on the face normal) and outer minus holes"""
     loops = [l for l in loops if len(l) >= 3]
     if not loops or len(loops[0]) < 3:
-        return False
+        return 0.0
     nl = math.sqrt(sum(c * c for c in nrm)) or 1.0
     def proj(v):
         return abs((v[0] * nrm[0] + v[1] * nrm[1] + v[2] * nrm[2]) / nl)
@@ -391,7 +416,7 @@ def _area_mismatch(loops, nrm, P, tr, tol=0.01):
         u = (pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]); v = (pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2])
         cx, cy, cz = u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]
         got += abs(cx * nrm[0] + cy * nrm[1] + cz * nrm[2]) / nl / 2
-    return abs(got - want) > tol * max(abs(want), outer * 1e-3, 1e-12)
+    return abs(got - want) / max(abs(want), outer * 1e-3, 1e-12)
 
 
 MAX_TRIS = 5_000_000   # triangles emitted per export (flatten and cache)

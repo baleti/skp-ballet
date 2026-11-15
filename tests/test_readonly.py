@@ -834,3 +834,16 @@ def test_tlv_declared_length_is_bounded_by_the_buffer():
     for _ in range(1000):
         tlv.parse_tlv(data)
     assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 50_000   # KiB
+
+
+def test_tilted_face_with_holes_survives_inexact_colinearity():
+    """Regression (hole_fuzz_grid tilt, seed 5, case 438): a tilted rectangle with two holes whose 2D working coordinates tie
+    to within float noise gave area 102.5 (> outer 100); retrying with a rotated 2D basis fixes it."""
+    import math
+    from skpballet import mesh
+    loops = [[(3.0, -7.0, 2.0), (13.0, -7.0, 2.0), (13.0, 2.5533648912560594, 4.955202066613396), (3.0, 2.5533648912560594, 4.955202066613396)],
+             [(8.0, -5.0893270217487885, 2.591040413322679), (10.0, -5.0893270217487885, 2.591040413322679), (10.0, -4.133990532623182, 2.8865606199840186), (8.0, -4.133990532623182, 2.8865606199840186)],
+             [(4.0, -1.2679810652463637, 3.773121239968037), (5.0, -1.2679810652463637, 3.773121239968037), (5.0, -0.3126445761207579, 4.0686414466293765)]]
+    nrm = (0.0, -29.552020666133956 / 100, 95.5336489125606 / 100)
+    P, t = mesh.triangulate(loops, nrm)
+    assert mesh._area_err(loops, nrm, P, t) < 1e-6
