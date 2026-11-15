@@ -1117,3 +1117,14 @@ def test_verify_cache_tool_accepts_good_and_flags_mixed_or_partial(tmp_path):
     assert run(c) == 1
     (c / "meta.json").unlink()
     assert run(c) == 2
+
+
+def test_known_wrong_corner_chain_holes_are_flagged_not_silent():
+    """305: six unit-cell holes whose corner contacts form a chain on a 6x6 face triangulate to area 29.5 instead of 30 (known bug,
+    not fixed: pinched spliced rings are mishandled by the bridge phase). Until fixed the area check MUST keep flagging it."""
+    from skpballet import mesh
+    cells = [(1, 1), (1, 2), (1, 4), (2, 3), (3, 1), (3, 4)]
+    loops = [[(0, 0, 0.0), (6, 0, 0.0), (6, 6, 0.0), (0, 6, 0.0)]]
+    loops += [[(x, y, 0.0), (x + 1, y, 0.0), (x + 1, y + 1, 0.0), (x, y + 1, 0.0)] for x, y in cells]
+    P, tr = mesh.triangulate(loops, (0, 0, 1))
+    assert mesh._area_mismatch(loops, (0, 0, 1), P, tr, 1e-6) or abs(_tri_area(P, tr) - 30) < 1e-6   # fixing it later makes the second branch true
