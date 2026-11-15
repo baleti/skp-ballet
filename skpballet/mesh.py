@@ -234,6 +234,15 @@ def triangulate(loops3d, normal, _split=True):
                 P2, t2 = _triangulate(L2, normal, _split, 0.0)
                 if _area_err(loops3d, normal, P2, t2) < be:
                     best, be = (P2, t2), _area_err(loops3d, normal, P2, t2)
+        if be > 1e-6 and len(loops3d) > 2:   # last resort: holes that still touch each other are shrunk toward their centroid by 1e-6 of their size, which un-touches them (error ~1e-6 relative, only used when it improves the area)
+            def shrink(h, f=1e-6):
+                n = len(h); c = [sum(p[k] for p in h) / n for k in range(3)]
+                return [tuple(p[k] + (c[k] - p[k]) * f for k in range(3)) for p in h]
+            L3 = [loops3d[0]] + [shrink(h) for h in loops3d[1:]]
+            P2, t2 = _triangulate(L3, normal, _split, 0.0)
+            e = _area_err(loops3d, normal, P2, t2)
+            if e < be and e <= 1e-4:
+                best, be = (P2, t2), e
         return best
     return P, tr
 
