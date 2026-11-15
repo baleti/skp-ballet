@@ -165,3 +165,43 @@ def test_mirrored_instances_keep_outward_winding(diag, want, tmp_path):
     for n in ns:
         assert n[0] == pytest.approx(0, abs=1e-12) and n[2] == pytest.approx(0, abs=1e-12)
         assert n[1] * want[1] > 0, (diag, n)
+
+
+def test_random_general_transforms_nested_keep_winding(tmp_path):
+    """random invertible 3x3 (rotation, shear, non-uniform and negative scale), translation and uniform scale s, nested two
+    levels. Reference: transform three face points point by point (_xf), take the world normal from the transformed
+    points, apply the Y-up swap (x,y,z)->(x,z,-y); every GLB triangle must have a positive dot with it."""
+    import random
+    from skpballet import scene
+    rnd = random.Random(309)
+    checked = 0
+    for it in range(60):
+        def rm():
+            while True:
+                a = [rnd.uniform(-2, 2) for _ in range(9)]
+                det = (a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6]) + a[2] * (a[3] * a[7] - a[4] * a[6]))
+                if abs(det) > 0.3:
+                    return a + [rnd.uniform(-5, 5) for _ in range(3)] + [rnd.choice([1.0, 1.0, 2.5, 0.4])]
+        m1, m2 = rm(), rm()
+        m = scene.Model(); inner = scene.Definition(2, "in"); outer = scene.Definition(1, "out"); m.defs = {1: outer, 2: inner}
+        inner.vertices = {0: (0, 0, 0), 1: (3, 0, 0), 2: (3, 2, 0), 3: (0, 2, 0)}
+        inner.faces = [dict(id=1, loops=[[0, 1, 2, 3]], mat=None, normal=(0, 0, 1))]
+        outer.instances = [dict(def_id=2, matrix=m2, name="b", id=None)]
+        m.root = scene.Definition(0, "<model>")
+        m.root.instances = [dict(def_id=1, matrix=m1, name="a", id=None)]
+        out = str(tmp_path / "o.glb"); mesh.write_glb(m, out)
+        W = [_xf(m1, _xf(m2, p)) for p in ((0, 0, 0), (3, 0, 0), (3, 2, 0))]
+        u = [W[1][i] - W[0][i] for i in range(3)]; v = [W[2][i] - W[0][i] for i in range(3)]
+        n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+        # the cross product of transformed points is det * (cofactor . n): a mirror reverses it, but the face's front side maps
+        # to the front side, so the expected normal is the cofactor image: multiply by sign(det) of the composite linear part
+        o = _xf(m1, _xf(m2, (0, 0, 0)))
+        ax = [tuple(c - oc for c, oc in zip(_xf(m1, _xf(m2, e)), o)) for e in ((1, 0, 0), (0, 1, 0), (0, 0, 1))]
+        det = (ax[0][0] * (ax[1][1] * ax[2][2] - ax[1][2] * ax[2][1]) - ax[0][1] * (ax[1][0] * ax[2][2] - ax[1][2] * ax[2][0])
+               + ax[0][2] * (ax[1][0] * ax[2][1] - ax[1][1] * ax[2][0]))
+        sg = 1 if det > 0 else -1
+        want = (sg * n[0], sg * n[2], -sg * n[1])
+        for t in _glb_tri_normals(out):
+            assert sum(x * y for x, y in zip(t, want)) > 0, it
+            checked += 1
+    assert checked >= 120
