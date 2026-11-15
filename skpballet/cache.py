@@ -1,7 +1,7 @@
 """Write an rvt-ballet style cache folder (model.glb with per-vertex _EIDX, meta.json, materials.json) from a .skp,
 so the rvt-ballet front-end (`rvt-ballet serve DIR`) can show it. Pure Python, read-only on the .skp.
 One element per top-level instance (whole subtree) plus one for loose top-level geometry."""
-import json
+import hashlib, json
 import os
 import struct
 
@@ -165,15 +165,16 @@ def write_cache(model, outdir, name="model.skp", edges=False, strict=False):
     js = dict(asset=dict(version="2.0", generator="skp-ballet"), scene=0, scenes=[dict(nodes=list(range(len(nodes))))], nodes=nodes,
               meshes=meshes, materials=matsj, accessors=accs, bufferViews=views, buffers=[dict(byteLength=len(bin_))])
     jb = json.dumps(js, separators=(",", ":")).encode(); jb += b" " * (-len(jb) % 4)
+    glb = (struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(jb) + 8 + len(bin_)) + struct.pack("<I4s", len(jb), b"JSON") + jb
+           + struct.pack("<I4s", len(bin_), b"BIN\0") + bytes(bin_))
     with mesh.atomic_open(os.path.join(outdir, "model.glb"), "wb") as f:
-        f.write(struct.pack("<4sII", b"glTF", 2, 12 + 8 + len(jb) + 8 + len(bin_)))
-        f.write(struct.pack("<I4s", len(jb), b"JSON") + jb)
-        f.write(struct.pack("<I4s", len(bin_), b"BIN\0") + bytes(bin_))
+        f.write(glb)
     # meta.json bbox is Revit style: Z-up metres; glTF is Y-up (x, z, -y)
     bb = [[lo[0], -hi[2], lo[1]], [hi[0], -lo[2], hi[1]]] if batches and lo[0] < 1e29 else [[0, 0, 0], [0, 0, 0]]
     meta = dict(file=name, levels=[], grids=[], rooms=[], views=[], sheets=[], fidLabels={"mesh": "triangle mesh from the SketchUp file"}, phases=[],
                 defaultHidden=[], stamps={"reader": "skp-ballet", "viewer": "skp-ballet"}, phase="done", batches=bmeta, bbox=bb,
-                coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp", warnings=list(model.warnings))
+                coverage={}, coverageByClass={}, bboxAgreement={}, elements=elements, source="skp", warnings=list(model.warnings),
+                glbSha1=hashlib.sha1(glb).hexdigest(), glbBytes=len(glb))   # lets a reader detect a meta.json/model.glb pair from two different writers
     with mesh.atomic_open(os.path.join(outdir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, separators=(",", ":"))
     with mesh.atomic_open(os.path.join(outdir, "materials.json"), "w", encoding="utf-8") as f:

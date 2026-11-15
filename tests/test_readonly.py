@@ -1087,3 +1087,13 @@ def test_cli_odd_inputs_exit_2_without_traceback(tmp_path, capsys):
             assert "Traceback" not in capsys.readouterr().err
     os.chmod(nop, 0o644)
     assert not (tmp_path / "o.glb").exists() and not (tmp_path / "oc").exists()
+
+
+def test_cache_meta_records_the_glb_hash_so_mixed_pairs_are_detectable(tmp_path):
+    import hashlib, json
+    from skpballet import cli
+    src = os.path.join(os.path.dirname(__file__), "data", "nesting_2021.skp")
+    assert cli.main(["cache", src, str(tmp_path / "c")]) == 0
+    g = (tmp_path / "c" / "model.glb").read_bytes()
+    meta = json.loads((tmp_path / "c" / "meta.json").read_text())
+    assert meta["glbSha1"] == hashlib.sha1(g).hexdigest() and meta["glbBytes"] == len(g)
