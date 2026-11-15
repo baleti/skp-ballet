@@ -148,6 +148,15 @@ def _merge_edge_sharing_holes(holes):
                         n = len(Bc)
                         path = [Bc[(j + 2 + k) % n] for k in range(n - 2)]   # u's successor .. v's predecessor
                         merged = A[:i + 1] + path + A[i + 1:]
+                        k = 0
+                        while len(merged) >= 3 and k < len(merged):   # a second shared edge leaves a zero-width spike p,c,p: drop it
+                            n2 = len(merged)
+                            if merged[k - 1] == merged[(k + 1) % n2]:
+                                for r in sorted({k, (k + 1) % n2}, reverse=True):
+                                    del merged[r]
+                                k = 0
+                            else:
+                                k += 1
                         if len(merged) >= 3:
                             holes[ia] = merged
                             del holes[ib]
