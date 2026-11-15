@@ -384,7 +384,7 @@ def definition_tris(d, warnings=None):
         nrm = f["normal"] or (0, 0, 1)
         P, tr = triangulate(loops, nrm)
         if warnings is not None and _area_mismatch(loops, nrm, P, tr):
-            w = "triangulated face area differs by more than 1%% from outer minus holes in at least one face (degenerate loops?): "\
+            w = "triangulated face area differs by more than 1%% from outer minus holes in at least one face (degenerate loops or damaged data): "\
                 "geometry of such faces may be wrong"
             if w not in warnings:
                 warnings.append(w)
@@ -452,9 +452,9 @@ def _degenerate(m):
     det = (a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6])
            + a[2] * (a[3] * a[7] - a[4] * a[6]))
     if m[12] == 0:
-        return "instance with scale 0 read as scale 1 (corrupt or unusual file)"
+        return "instance with scale 0 read as scale 1 (damaged data or unusual file)"
     if det == 0:
-        return "instance with a singular transform: its geometry is flattened (corrupt or unusual file)"
+        return "instance with a singular transform: its geometry is flattened (damaged data or unusual file)"
     return None
 
 
@@ -610,7 +610,7 @@ class StrictTruncation(ValueError):
 
 
 def _truncated(model, before):
-    return [w for w in model.warnings[before:] if "NOT placed" in w or "depth/size limit" in w]
+    return [w for w in model.warnings[before:] if "NOT placed" in w or "depth/size limit" in w or "damaged data" in w]
 
 
 def write_glb(model, path, edges=True, strict=False):
@@ -624,7 +624,7 @@ def write_glb(model, path, edges=True, strict=False):
         if was:
             gc.enable()
     if strict and _truncated(model, nw):
-        raise StrictTruncation("--strict: export truncated, nothing written: " + _truncated(model, nw)[0])
+        raise StrictTruncation("--strict: export truncated or damaged, nothing written: " + _truncated(model, nw)[0])
     bin_, views, accs, prims, mats = bytearray(), [], [], [], []
     for mid, buf in sorted(res.items(), key=lambda kv: str(kv[0])):
         if not buf:

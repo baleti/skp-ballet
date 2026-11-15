@@ -154,7 +154,7 @@ def _entities(ent, d, model):
                         o = p[6 + l1 + 6] if len(p) > 6 + l1 + 6 else 0
                         e = d.edges.get(eid)
                         if e is None:
-                            model.warnings.append("face edge %d missing" % eid)
+                            model.warnings.append("face edge %d missing (damaged data)" % eid)
                             continue
                         vs.append(e[0] if o == 0 else e[1])
                     loops.append(vs)
@@ -295,7 +295,7 @@ def _load(skp):
                     d.is_group = bool(gf is not None and gf.uint())
                     _entities(ent, d, model)
                     if did in model.defs:
-                        w = "duplicate definition id %s: the earlier definition is replaced (damaged file?)" % did
+                        w = "duplicate definition id %s: the earlier definition is replaced (damaged data?)" % did
                         if w not in model.warnings:
                             model.warnings.append(w)
                     model.defs[did] = d

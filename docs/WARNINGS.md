@@ -2,7 +2,10 @@
 
 `skp-ballet` never edits a .skp. Warnings tell you where an export (GLB extras `asset.extras.warnings`, cache
 `meta.json` `warnings`, `info --json` `warnings`, the viewer banner) may differ from what SketchUp shows. `--strict`
-exits 3 and writes nothing when a warning says part of the model is NOT placed (truncated by a limit).
+exits 3 and writes nothing when a warning says part of the model is NOT placed (truncated by a limit), or says `damaged data`
+(this includes degenerate instance transforms, faces whose area does not match, missing face edges and duplicate definition ids,
+so an unusual but intact file can also be refused under --strict). Warnings about content that is simply not exported
+(annotations, loose edges, hidden flags) never trigger it.
 
 Each line below starts with a phrase that appears in the source; `tests/test_readonly.py::test_warnings_doc_matches_source`
 checks every one of them still does.

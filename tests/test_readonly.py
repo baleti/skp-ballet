@@ -943,3 +943,22 @@ def test_every_warning_in_the_source_is_documented():
                         bad.append((os.path.basename(f), n.lineno, tx[:60]))
     assert sites >= 25
     assert not bad, bad
+
+
+@pytest.mark.parametrize("kind", ["glb", "cache"])
+@pytest.mark.parametrize("what", ["singular", "scale0", "area"])
+def test_strict_refuses_export_time_damage_signals(kind, what, tmp_path):
+    from skpballet import mesh, cache, scene
+    m = scene.Model(); m.root = scene.Definition(-1, "root")
+    d = scene.Definition(0, "d"); d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]; m.defs[0] = d
+    mat = {"singular": [0] * 12 + [1], "scale0": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0], "area": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]}[what]
+    m.root.instances = [dict(def_id=0, matrix=mat, name="x", id=None)]
+    if what == "area":   # edge-sharing holes: known wrong area
+        m.root.vertices = {0: (0, 0, 0), 1: (10, 0, 0), 2: (10, 10, 0), 3: (0, 10, 0), 4: (2, 2, 0), 5: (4, 2, 0), 6: (4, 4, 0), 7: (2, 4, 0),
+                           8: (4, 2, 0), 9: (6, 2, 0), 10: (6, 4, 0), 11: (4, 4, 0)}
+        m.root.faces = [dict(id=1, loops=[[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], mat=None, normal=(0, 0, 1))]
+    out = tmp_path / ("o.glb" if kind == "glb" else "c")
+    with pytest.raises(mesh.StrictTruncation):
+        mesh.write_glb(m, str(out), strict=True) if kind == "glb" else cache.write_cache(m, str(out), "x.skp", strict=True)
+    assert not out.exists() or (out.is_dir() and not (out / "meta.json").exists())
