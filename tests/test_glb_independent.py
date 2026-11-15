@@ -120,3 +120,48 @@ def test_triangle_winding_follows_the_stored_face_normal(f):
                 u = [P[b][i] - P[a][i] for i in range(3)]; v = [P[c][i] - P[a][i] for i in range(3)]
                 cr = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
                 assert sum(x * y for x, y in zip(cr, n)) >= -1e-12
+
+
+def _glb_tri_normals(path):
+    b = open(path, "rb").read()
+    jl = struct.unpack_from("<I", b, 12)[0]
+    j = json.loads(b[20:20 + jl]); bin_ = b[20 + jl + 8:]
+    out = []
+    for pr in j["meshes"][0]["primitives"]:
+        if pr.get("mode", 4) != 4:
+            continue
+        pos = j["accessors"][pr["attributes"]["POSITION"]]
+        o = j["bufferViews"][pos["bufferView"]].get("byteOffset", 0) + pos.get("byteOffset", 0)
+        P = [struct.unpack_from("<3f", bin_, o + 12 * i) for i in range(pos["count"])]
+        if "indices" in pr:
+            ia = j["accessors"][pr["indices"]]
+            io = j["bufferViews"][ia["bufferView"]].get("byteOffset", 0) + ia.get("byteOffset", 0)
+            fmt, sz = {5123: ("<H", 2), 5125: ("<I", 4)}[ia["componentType"]]
+            idx = [struct.unpack_from(fmt, bin_, io + sz * i)[0] for i in range(ia["count"])]
+        else:
+            idx = list(range(len(P)))
+        for k in range(0, len(idx), 3):
+            a, bb, c = (P[i] for i in idx[k:k + 3])
+            u = [bb[i] - a[i] for i in range(3)]; v = [c[i] - a[i] for i in range(3)]
+            out.append((u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]))
+    return out
+
+
+@pytest.mark.parametrize("diag,want", [((1, 1, 1), (0, 1, 0)), ((-1, 1, 1), (0, 1, 0)), ((1, 1, -1), (0, -1, 0)),
+                                       ((-1, -1, 1), (0, 1, 0)), ((-1, -1, -1), (0, -1, 0))])
+def test_mirrored_instances_keep_outward_winding(diag, want, tmp_path):
+    """a face with normal +z in a definition; the instance matrix scales axes by `diag` (negative = mirror).
+    World normal = (0,0,sign(dz)) which the Y-up export maps to (0, sign, 0): the GLB triangles must wind that way
+    (read back with the struct-only consumer)."""
+    from skpballet import scene
+    m = scene.Model(); d = scene.Definition(1, "c"); m.defs[1] = d
+    d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (1, 1, 0), 3: (0, 1, 0)}
+    d.faces = [dict(id=1, loops=[[0, 1, 2, 3]], mat=None, normal=(0, 0, 1))]
+    m.root = scene.Definition(0, "<model>")
+    m.root.instances = [dict(def_id=1, matrix=[diag[0], 0, 0, 0, diag[1], 0, 0, 0, diag[2], 0, 0, 0, 1.0], name="i", id=None)]
+    out = str(tmp_path / "o.glb"); mesh.write_glb(m, out)
+    ns = _glb_tri_normals(out)
+    assert ns
+    for n in ns:
+        assert n[0] == pytest.approx(0, abs=1e-12) and n[2] == pytest.approx(0, abs=1e-12)
+        assert n[1] * want[1] > 0, (diag, n)
