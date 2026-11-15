@@ -465,6 +465,11 @@ def note_unexported(model):
     for d in list(model.defs.values()) + [model.root]:
         if d is not None:
             n_ann += len(d.annotations); n_txt += len(d.texts)
+    off = getattr(model, "layers_off", None)
+    if off:   # the flag meaning is unverified (see FORMAT.md) and per-face layer assignment is not decoded: nothing is hidden
+        w = "%d layer(s) carry a hidden/off flag in the file (meaning unverified); their geometry is NOT hidden in this export" % len(off)
+        if w not in model.warnings:
+            model.warnings.append(w)
     if n_ann or n_txt:
         w = "%d annotation(s) (section planes, guide points, dimensions) and %d screen text(s) are in the file but NOT in this export" % (n_ann, n_txt)
         if w not in model.warnings:

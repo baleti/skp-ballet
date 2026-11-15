@@ -890,3 +890,14 @@ def test_cache_warns_about_loose_edges_only(tmp_path):
     assert any("1 loose edge(s)" in w for w in b.warnings)
     c = mk(True); cache.write_cache(c, str(tmp_path / "c"), "x.skp", edges=True)
     assert not any("loose edge" in w for w in c.warnings)
+
+
+def test_hidden_flagged_layers_are_warned_not_silently_shown(tmp_path):
+    from skpballet import mesh, scene
+    m = scene.Model(); m.root = scene.Definition(-1, "root"); m.root.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    m.root.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]
+    m.layers = {1: "Hidden"}; m.layers_off = {1}
+    mesh.write_glb(m, str(tmp_path / "o.glb"))
+    assert any("hidden/off flag" in w and "NOT hidden" in w for w in m.warnings)
+    k = scene.Model(); k.root = m.root; mesh.write_glb(k, str(tmp_path / "p.glb"))
+    assert not any("hidden/off" in w for w in k.warnings)
