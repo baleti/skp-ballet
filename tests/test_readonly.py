@@ -847,3 +847,17 @@ def test_tilted_face_with_holes_survives_inexact_colinearity():
     nrm = (0.0, -29.552020666133956 / 100, 95.5336489125606 / 100)
     P, t = mesh.triangulate(loops, nrm)
     assert mesh._area_err(loops, nrm, P, t) < 1e-6
+
+
+def test_many_holes_face_stays_fast_and_exact():
+    """Perforated panel: 300 square holes in one face. Guards the O(holes x ring) bridge phase against regressions
+    (measured 0.7 s; the limit is generous so a slow CI box does not flake) and checks the exact area."""
+    import time
+    from skpballet import mesh
+    n = 18
+    sq = lambda cx, cy, r: [(cx - r, cy - r, 0), (cx + r, cy - r, 0), (cx + r, cy + r, 0), (cx - r, cy + r, 0)]
+    holes = [sq(5 + 10 * (k % n), 5 + 10 * (k // n), 2) for k in range(300)]
+    t0 = time.time()
+    P, t = mesh.triangulate([[(0, 0, 0), (10 * n, 0, 0), (10 * n, 10 * n, 0), (0, 10 * n, 0)]] + holes, (0, 0, 1))
+    assert time.time() - t0 < 20
+    assert abs(_tri_area(P, t) - ((10 * n) ** 2 - 300 * 16)) < 1e-6
