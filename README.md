@@ -25,7 +25,7 @@ components or groups but fails the strict tree rules, `info` shows the warning "
 list is exported.
 Not yet: textures/UVs, text/dimensions/sections, scenes/cameras, writing (the tool never writes a .skp). Face
 triangulation handles holes, pinched loops, spikes, T-touching vertices, holes sharing an edge (merged) and chains of
-corner-touching holes (fallback). Holes that still touch after those retries are shrunk by 1e-6 of their size as a last resort (random cell-hole sets: 0 wrong
+corner-touching holes (fallback). Holes that still touch after those retries are shrunk by 1e-6, 1e-4 or 1e-3 of their size as a last resort (random cell-hole sets: 0 wrong
 of 2143, area error under 1e-4, synthetic only; the area self-check still warns on anything left; an earlier real-file area check: about 0.002 percent of faces off by more than 0.1
 percent; not re-measured since the hole changes, no real files on this host). See docs/FORMAT.md; every warning the tool can raise is explained in docs/WARNINGS.md.
 

@@ -1129,3 +1129,14 @@ def test_corner_chain_holes_fixed_by_shrink_fallback():
     P, tr = mesh.triangulate(loops, (0, 0, 1))
     assert abs(_tri_area(P, tr) - 30) < 1e-4
     assert all(((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[c][0] - P[a][0]) * (P[b][1] - P[a][1])) >= 0 for a, b, c in tr)
+
+
+def test_touching_triangle_holes_shrink_ladder():
+    """305 follow-up: 7 triangular holes with corner contacts on an 8x8 face. Shrinking by 1e-6 left near-touching holes that the
+    bridge phase mishandled (area 54 instead of 60.5); the ladder 1e-6, 1e-4, 1e-3 recovers it (error about 2e-3 on 60.5)."""
+    from skpballet import mesh
+    hs = [((2, 5), (3, 6), (2, 6)), ((3, 1), (4, 2), (3, 2)), ((3, 3), (4, 4), (3, 4)), ((4, 5), (4, 6), (3, 6)),
+          ((4, 3), (5, 3), (4, 4)), ((4, 4), (5, 4), (4, 5)), ((4, 6), (5, 6), (4, 7))]
+    loops = [[(0, 0, 0.0), (8, 0, 0.0), (8, 8, 0.0), (0, 8, 0.0)]] + [[(x, y, 0.0) for x, y in t] for t in hs]
+    P, tr = mesh.triangulate(loops, (0, 0, 1))
+    assert abs(_tri_area(P, tr) - 60.5) < 0.01
