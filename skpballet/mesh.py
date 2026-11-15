@@ -126,10 +126,48 @@ def _split_pinched(loop):
     return out or [loop]
 
 
+def _merge_edge_sharing_holes(holes):
+    """Two holes that share an edge enclose a zero-width wall: they are one hole. Without this one of them was left filled.
+    Rings are merged along the shared edge (points compared exactly); no shared edge -> input returned unchanged."""
+    holes = [list(h) for h in holes]
+    changed = True
+    while changed and len(holes) > 1:
+        changed = False
+        for ia in range(len(holes)):
+            A = holes[ia]
+            ea = {(A[i], A[(i + 1) % len(A)]): i for i in range(len(A))}
+            for ib in range(ia + 1, len(holes)):
+                B = holes[ib]
+                for sw in (False, True):
+                    Bc = B[::-1] if sw else B
+                    for j in range(len(Bc)):
+                        v, u = Bc[j], Bc[(j + 1) % len(Bc)]
+                        i = ea.get((u, v))
+                        if i is None:
+                            continue
+                        n = len(Bc)
+                        path = [Bc[(j + 2 + k) % n] for k in range(n - 2)]   # u's successor .. v's predecessor
+                        merged = A[:i + 1] + path + A[i + 1:]
+                        if len(merged) >= 3:
+                            holes[ia] = merged
+                            del holes[ib]
+                            changed = True
+                        break
+                    if changed:
+                        break
+                if changed:
+                    break
+            if changed:
+                break
+    return holes
+
+
 def triangulate(loops3d, normal, _split=True):
     """loops3d: list of lists of (x,y,z); first is outer. Returns (points3d, tri index triples).
     A face with holes whose triangle area is off (exact ties/colinearity in the 2D working plane confuse the bridge and ear
     tests) is retried with the 2D basis rotated by a few arbitrary angles; the best result wins."""
+    if len(loops3d) > 2:
+        loops3d = [loops3d[0]] + _merge_edge_sharing_holes(loops3d[1:])
     P, tr = _triangulate(loops3d, normal, _split, 0.0)
     if len(loops3d) > 1 and len(P) <= 3000 and _area_mismatch(loops3d, normal, P, tr, 1e-6):   # size cap: retries cost up to 5x on hopeless faces
         best, be = (P, tr), _area_err(loops3d, normal, P, tr)

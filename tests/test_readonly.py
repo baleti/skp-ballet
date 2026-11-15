@@ -805,7 +805,8 @@ def test_wrong_face_area_is_warned_and_good_faces_are_not():
         d.faces = [dict(id=0, loops=loops, mat=None, normal=(0, 0, 1))]
         w = []; mesh.definition_tris(d, w); return w
     assert run([[(2, 2), (4, 2), (4, 4), (2, 4)]]) == []
-    assert run([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 2), (6, 2), (6, 4), (4, 4)]])   # edge-sharing holes (known wrong area)
+    assert run([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 2), (6, 2), (6, 4), (4, 4)]]) == []   # edge-sharing holes are merged now: right area
+    assert run([[(2, 2), (6, 2), (6, 6), (2, 6)], [(4, 4), (8, 4), (8, 8), (4, 8)]])   # overlapping holes (damaged): wrong area, warned
 
 
 @pytest.mark.parametrize("name", ["ünï côdé.skp", "with space .skp", "日本語.skp", "a'b\"c.skp", "a" * 200 + ".skp"])
@@ -954,11 +955,29 @@ def test_strict_refuses_export_time_damage_signals(kind, what, tmp_path):
     d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]; m.defs[0] = d
     mat = {"singular": [0] * 12 + [1], "scale0": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0], "area": [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]}[what]
     m.root.instances = [dict(def_id=0, matrix=mat, name="x", id=None)]
-    if what == "area":   # edge-sharing holes: known wrong area
-        m.root.vertices = {0: (0, 0, 0), 1: (10, 0, 0), 2: (10, 10, 0), 3: (0, 10, 0), 4: (2, 2, 0), 5: (4, 2, 0), 6: (4, 4, 0), 7: (2, 4, 0),
-                           8: (4, 2, 0), 9: (6, 2, 0), 10: (6, 4, 0), 11: (4, 4, 0)}
+    if what == "area":   # overlapping holes (damaged data): wrong area
+        m.root.vertices = {0: (0, 0, 0), 1: (10, 0, 0), 2: (10, 10, 0), 3: (0, 10, 0), 4: (2, 2, 0), 5: (6, 2, 0), 6: (6, 6, 0), 7: (2, 6, 0),
+                           8: (4, 4, 0), 9: (8, 4, 0), 10: (8, 8, 0), 11: (4, 8, 0)}
         m.root.faces = [dict(id=1, loops=[[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], mat=None, normal=(0, 0, 1))]
     out = tmp_path / ("o.glb" if kind == "glb" else "c")
     with pytest.raises(mesh.StrictTruncation):
         mesh.write_glb(m, str(out), strict=True) if kind == "glb" else cache.write_cache(m, str(out), "x.skp", strict=True)
     assert not out.exists() or (out.is_dir() and not (out / "meta.json").exists())
+
+
+def _tri_area(P, tr):
+    return sum(abs(0.5 * ((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[b][1] - P[a][1]) * (P[c][0] - P[a][0]))) for a, b, c in tr)
+
+
+def test_holes_sharing_an_edge_are_one_hole():
+    from skpballet import mesh
+    O = [(0, 0), (10, 0), (10, 10), (0, 10)]
+    cases = [
+        ([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 2), (6, 2), (6, 4), (4, 4)]], 92.0),
+        ([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 4), (6, 4), (6, 2), (4, 2)]], 92.0),   # opposite winding
+        ([[(1, 1), (2, 1), (2, 2), (1, 2)], [(2, 1), (3, 1), (3, 2), (2, 2)], [(3, 1), (4, 1), (4, 2), (3, 2)]], 97.0),
+    ]
+    for hs, want in cases:
+        L = [[(x, y, 0.0) for x, y in l] for l in [O] + hs]
+        P, tr = mesh.triangulate(L, (0, 0, 1))
+        assert abs(_tri_area(P, tr) - want) < 1e-9

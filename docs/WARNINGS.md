@@ -27,7 +27,7 @@ checks every one of them still does.
 
 ## Geometry that may be wrong
 - `face refers to vertex ids missing`: a face names vertices that do not exist, it is incomplete or skipped.
-- `triangulated face area differs`: the triangle area is more than 1% off outer minus holes (degenerate loops, edge-sharing holes).
+- `triangulated face area differs`: the triangle area is more than 1% off outer minus holes (degenerate loops; holes that share an edge are merged into one hole first).
 - `scale 0 read as scale 1` and `singular transform`: an instance matrix is degenerate.
 - `non-finite or absurd coordinates`: coordinates beyond 1e30 or NaN; convert and cache refuse such a file.
 
