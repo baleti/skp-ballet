@@ -479,3 +479,11 @@ more than 2 GiB are refused. The limits are guesses from fixtures, not from larg
   area projected on the normal vs outer minus holes) now adds a warning to the GLB extras and cache meta.
 - Instance transforms: NaN/inf/absurd values refuse the export (no GLB with NaN); scale 0 is read as 1 and singular
   matrices flatten the geometry, both now warned. Faces naming missing vertex ids are warned.
+
+## Legacy section cuts and annotations (item 300, negative result)
+
+Class names such as SectionPlane, CText, Dimension and ConstructionPoint occur in the class registry of EVERY public legacy
+fixture (30 of 30, identical counts 1/3/4/1), so a string search cannot tell whether a file holds a section plane,
+text or dimension instance. The legacy reader decodes only the first entity list and already warns that it is
+experimental and incomplete; a specific "annotations not exported" warning for legacy files needs an instance-level
+decoder and is NOT possible from the registry alone. Not decoded, not claimed.
