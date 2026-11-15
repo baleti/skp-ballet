@@ -96,3 +96,27 @@ def test_glb_area_matches_model_area(f, tmp_path):
     if m.counts()["faces"]:
         assert ref > 0 and got > 0
     assert got == pytest.approx(ref, rel=2e-3, abs=1e-9), (got, ref)
+
+
+@pytest.mark.parametrize("f", FILES)
+def test_triangle_winding_follows_the_stored_face_normal(f):
+    """every triangle of every face of every public fixture is counter-clockwise seen from the file's own face normal
+    (a reversed triangle would be culled as a hole in a viewer)"""
+    try:
+        m = load(open_skp(f))
+    except Exception:
+        pytest.skip("unreadable fixture")
+    for d in [m.root] + list(m.defs.values()):
+        for fc in d.faces:
+            n = fc.get("normal")
+            if not fc["loops"] or not n:
+                continue
+            try:
+                L = [[d.vertices[i] for i in l] for l in fc["loops"]]
+            except KeyError:
+                continue
+            P, tr = mesh.triangulate(L, n)
+            for a, b, c in tr:
+                u = [P[b][i] - P[a][i] for i in range(3)]; v = [P[c][i] - P[a][i] for i in range(3)]
+                cr = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+                assert sum(x * y for x, y in zip(cr, n)) >= -1e-12
