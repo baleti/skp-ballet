@@ -901,3 +901,15 @@ def test_hidden_flagged_layers_are_warned_not_silently_shown(tmp_path):
     assert any("hidden/off flag" in w and "NOT hidden" in w for w in m.warnings)
     k = scene.Model(); k.root = m.root; mesh.write_glb(k, str(tmp_path / "p.glb"))
     assert not any("hidden/off" in w for w in k.warnings)
+
+
+def test_warnings_doc_matches_source():
+    """docs/WARNINGS.md lists warning phrases by their first backticked words; each must still occur in the package source."""
+    import glob, re
+    root = os.path.join(os.path.dirname(__file__), "..")
+    doc = open(os.path.join(root, "docs", "WARNINGS.md"), encoding="utf-8").read()
+    anchors = [a.rstrip(":") for a in re.findall(r"^- `([^`]+)`", doc, re.M)]
+    assert len(anchors) >= 20
+    src = "".join(open(f, encoding="utf-8").read() for f in glob.glob(os.path.join(root, "skpballet", "*.py")))
+    missing = [a for a in anchors if a not in src]
+    assert not missing, missing
