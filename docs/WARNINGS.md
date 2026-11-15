@@ -15,7 +15,7 @@ checks every one of them still does.
 - `loose edge(s)`: edges bounding no face (curves, guides) are left out of a cache unless `--edges` is given.
 - `refer to empty definitions`: instances of a component or group with no faces, edges or instances; they place nothing (informational, not damage).
 - `hidden/off flag`: layers flagged hidden in the file are still drawn (the flag meaning is unverified).
-- `entity collection`: a record collection the reader does not understand; its content is missing.
+- `entity collection`: a record collection the reader does not understand; its content is missing. Collection 0x1396 appears on every real 2023 model seen so far (curve-like records, see FORMAT.md); the face, edge and triangle counts of those models are complete without it, so for 0x1396 alone the warning is probably harmless (unproven).
 - `legacy file contains objects that are NOT read`: classes of 2013-2020 files that are skipped.
 
 ## Limits and corrupt-file protection (the rest is NOT placed)
