@@ -819,3 +819,18 @@ def test_odd_file_names_work_for_info_convert_cache(name, tmp_path):
     assert cli.main(["cache", str(dst), str(tmp_path / "c d")]) in (0, None)
     assert (tmp_path / "o.glb").stat().st_size > 0 and (tmp_path / "c d" / "meta.json").exists()
     assert hashlib.sha256(dst.read_bytes()).hexdigest() == before
+
+
+def test_tlv_declared_length_is_bounded_by_the_buffer():
+    """A node declaring 4 GiB (or overrunning its parent) must stop the parse, never allocate or read past the data."""
+    import struct, resource
+    from skpballet import tlv
+    data = struct.pack("<HI", 0x0001, 0xFFFFFFFF) + b"x" * 10
+    assert tlv.parse_tlv(data) == []
+    ok = struct.pack("<HI", 0x0001, 4) + b"abcd" + struct.pack("<HI", 0x0001, 0xFFFFFFF0) + b"zz"
+    n = tlv.parse_tlv(ok)
+    assert len(n) == 1 and n[0].payload == b"abcd"
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    for _ in range(1000):
+        tlv.parse_tlv(data)
+    assert resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before < 50_000   # KiB
