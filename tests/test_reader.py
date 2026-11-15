@@ -646,3 +646,47 @@ def test_2021_instance_names_read():
     m = scene.load(container.open_skp(os.path.join(D, "nesting_2021.skp")))
     names = sorted(i["name"] for d in list(m.defs.values()) + [m.root] for i in d.instances)
     assert names == ["", "Inner", "Outer"]   # same instance names as the legacy nesting fixtures
+
+
+def test_glb_alignment_and_accessor_minmax_for_all_fixtures(tmp_path):
+    """glTF 2.0 rules the older structural test lacks: 4-byte aligned chunks and view offsets, BIN chunk type, accessor
+    min/max equal to the data, byteLength matches the BIN chunk, one scene, node/mesh/material indices in range."""
+    import glob, json, struct
+    from skpballet import mesh, scene, container
+    files = sorted(glob.glob(os.path.join(D, "*.skp")) + glob.glob(os.path.join(D, "legacy", "*.skp")))
+    for f in files:
+        out = str(tmp_path / "a.glb")
+        mesh.write_glb(scene.load(container.open_skp(f)), out)
+        d = open(out, "rb").read()
+        jl, jt = struct.unpack_from("<I4s", d, 12)
+        assert jt == b"JSON" and jl % 4 == 0, f
+        js = json.loads(d[20:20 + jl])
+        if len(d) == 20 + jl:   # empty model: JSON-only GLB is legal when there is no buffer
+            assert not js.get("buffers") and not js.get("accessors"), f
+            continue
+        bl, bt = struct.unpack_from("<I4s", d, 20 + jl)
+        assert bt == b"BIN\x00" and bl % 4 == 0 and 20 + jl + 8 + bl == len(d), f
+        bin_ = d[28 + jl:]
+        assert js["buffers"][0]["byteLength"] <= bl and bl - js["buffers"][0]["byteLength"] < 4, f
+        for bv in js.get("bufferViews", []):
+            assert bv["byteOffset"] % 4 == 0 and bv["byteLength"] % 4 == 0, f
+        for a in js.get("accessors", []):
+            if a["componentType"] == 5126 and a["type"] == "VEC3" and a["count"]:
+                bv = js["bufferViews"][a["bufferView"]]
+                v = struct.unpack_from("<%df" % (3 * a["count"]), bin_, bv["byteOffset"] + a.get("byteOffset", 0))
+                for k in range(3):
+                    col = v[k::3]
+                    assert min(col) == pytest_approx(a["min"][k]) and max(col) == pytest_approx(a["max"][k]), f
+        assert len(js["scenes"]) == 1 and js["scene"] == 0, f
+        for n in js["nodes"]:
+            assert 0 <= n.get("mesh", 0) < max(1, len(js["meshes"])), f
+        nm = len(js.get("materials", []))
+        for me in js["meshes"]:
+            for p in me["primitives"]:
+                assert p.get("material", 0) < max(nm, 1), f
+                assert p["attributes"]["POSITION"] < len(js["accessors"]), f
+
+
+def pytest_approx(x):
+    import pytest
+    return pytest.approx(x, abs=1e-6)
