@@ -496,3 +496,6 @@ the committed fixtures has it). Its records (12 in desk.skp) are TLV nodes 0x4A3
 a flag byte (0x4A3A: 0), and two 2-byte references (0x4A3B, 0x4A3C). Unverified guess: curve objects (an arc or circle grouping
 a run of edges: count = number of edges, the two references = first and last edge). Faces, edges and triangles are produced
 without it, so the warning is probably harmless for the mesh, but that is NOT proven.
+Test of that guess on desk.skp (12 records): the two references (values 1153 to 1898) are NOT vertex ids found in the edge graph (none of
+the 24 appear as an edge endpoint), so they are not first/last vertex; the count (5 or 6) is not a path length between them. They may
+be ids of the entities that the curve groups (edges are not individually id-tagged in this layout) or something else. Still undecoded.
