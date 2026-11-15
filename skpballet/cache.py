@@ -27,6 +27,7 @@ def _elements(model):
 
 def build(model, max_depth=24, edges=False):
     """-> (elements, batches). batches: dict key -> dict(kind, mat, pos, eidx, idx, ranges)"""
+    mesh.note_unexported(model)
     batches = {}
     elements = []
 

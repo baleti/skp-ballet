@@ -861,3 +861,13 @@ def test_many_holes_face_stays_fast_and_exact():
     P, t = mesh.triangulate([[(0, 0, 0), (10 * n, 0, 0), (10 * n, 10 * n, 0), (0, 10 * n, 0)]] + holes, (0, 0, 1))
     assert time.time() - t0 < 20
     assert abs(_tri_area(P, t) - ((10 * n) ** 2 - 300 * 16)) < 1e-6
+
+
+@pytest.mark.parametrize("kind", ["glb", "cache"])
+def test_unexported_annotations_and_texts_are_warned(kind, tmp_path):
+    from skpballet import mesh, cache, scene
+    m = scene.Model(); m.root = scene.Definition(-1, "root"); m.root.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    m.root.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]
+    m.root.annotations = [dict(kind="guide point", point=(0, 0, 0))]; m.root.texts = [dict(text="t", x=0, y=0)]
+    mesh.write_glb(m, str(tmp_path / "o.glb")) if kind == "glb" else cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    assert any("1 annotation(s)" in w and "1 screen text(s)" in w and "NOT in this export" in w for w in m.warnings)

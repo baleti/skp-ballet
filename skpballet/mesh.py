@@ -458,9 +458,23 @@ def _degenerate(m):
     return None
 
 
+def note_unexported(model):
+    """Annotations and screen texts are read but never exported to GLB/cache: say so once, with counts, so a viewer of the
+    export does not take it for the whole model."""
+    n_ann = n_txt = 0
+    for d in list(model.defs.values()) + [model.root]:
+        if d is not None:
+            n_ann += len(d.annotations); n_txt += len(d.texts)
+    if n_ann or n_txt:
+        w = "%d annotation(s) (section planes, guide points, dimensions) and %d screen text(s) are in the file but NOT in this export" % (n_ann, n_txt)
+        if w not in model.warnings:
+            model.warnings.append(w)
+
+
 def flatten(model, max_depth=24, max_tris=None, lines=None):
     """Returns {mat_id: flat list of floats (x,y,z per vertex, metres, Y-up)}.
     If `lines` is a list, edge segments (6 floats each, same space) are appended to it."""
+    note_unexported(model)
     cache, res, count = {}, {}, [0]
     max_tris = MAX_TRIS if max_tris is None else max_tris
     nodes = [0]
