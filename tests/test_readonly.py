@@ -1065,3 +1065,25 @@ def test_exports_are_byte_identical_across_hash_seeds(tmp_path):
                 h.update(open(p, "rb").read())
             sums.append(h.hexdigest())
         assert sums[0] == sums[1], src
+
+
+def test_cli_odd_inputs_exit_2_without_traceback(tmp_path, capsys):
+    from skpballet import cli
+    (tmp_path / "empty.skp").write_bytes(b"")
+    (tmp_path / "dir.skp").mkdir()
+    cases = [tmp_path / "empty.skp", tmp_path / "dir.skp", tmp_path / "missing.skp"]
+    if hasattr(os, "symlink"):
+        try:
+            os.symlink(str(tmp_path / "nowhere"), str(tmp_path / "dangling.skp")); cases.append(tmp_path / "dangling.skp")
+        except OSError:
+            pass
+    nop = tmp_path / "noperm.skp"; nop.write_bytes(b"x"); os.chmod(nop, 0)
+    if not os.access(nop, os.R_OK):   # not when running as root / on filesystems without modes
+        cases.append(nop)
+    for c in cases:
+        for cmd in ("info", "convert", "cache"):
+            args = [cmd, str(c)] + ([str(tmp_path / "o.glb")] if cmd == "convert" else [str(tmp_path / "oc")] if cmd == "cache" else [])
+            assert cli.main(args) == 2, (c.name, cmd)
+            assert "Traceback" not in capsys.readouterr().err
+    os.chmod(nop, 0o644)
+    assert not (tmp_path / "o.glb").exists() and not (tmp_path / "oc").exists()
