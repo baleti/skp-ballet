@@ -487,3 +487,12 @@ fixture (30 of 30, identical counts 1/3/4/1), so a string search cannot tell whe
 text or dimension instance. The legacy reader decodes only the first entity list and already warns that it is
 experimental and incomplete; a specific "annotations not exported" warning for legacy files needs an instance-level
 decoder and is NOT possible from the registry alone. Not decoded, not claimed.
+
+### Observation on real 2023 models: collection 0x1396 (2026-11-15, not committed as fixtures)
+Five CC-BY models from a public test-fixture set (SketchUp 23.2 files, 210 to 918 faces, groups/components, materials, one layer;
+kept local, not redistributed because the original authors and attribution are not recorded) all read without damage or area
+warnings. Every one of them also carries an entity collection 0x1396 that the reader skips with the 'NOT read' warning (none of
+the committed fixtures has it). Its records (12 in desk.skp) are TLV nodes 0x4A38: id (0x5DC), a small count (0x4A39: 5, 6, 6),
+a flag byte (0x4A3A: 0), and two 2-byte references (0x4A3B, 0x4A3C). Unverified guess: curve objects (an arc or circle grouping
+a run of edges: count = number of edges, the two references = first and last edge). Faces, edges and triangles are produced
+without it, so the warning is probably harmless for the mesh, but that is NOT proven.
