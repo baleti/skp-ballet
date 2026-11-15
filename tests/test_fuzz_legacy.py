@@ -48,3 +48,27 @@ def test_2021_fuzz_fails_cleanly(tmp_path):
                 flatten(load(open_skp(str(p))))
             except (SkpError, ValueError, KeyError):
                 pass
+
+
+def test_cli_strict_on_mutated_files_never_crashes_or_leaves_output(tmp_path):
+    """convert/cache --strict on fuzzed legacy and 2021 files: exit code in {0,1,2,3}, no traceback, and
+    exit 3 (or any failure) leaves no output file behind."""
+    from skpballet import cli
+    rnd = random.Random(301)
+    files = sorted(glob.glob(os.path.join(D, "*.skp")))[::3] + sorted(glob.glob(os.path.join(os.path.dirname(D), "*.skp")))
+    for f in files:
+        base = open(f, "rb").read()
+        for i in range(6):
+            b = bytearray(base)
+            if i % 3 == 0:
+                b = b[: rnd.randrange(1, len(b))]
+            else:
+                for _ in range(rnd.randrange(1, 12)):
+                    b[rnd.randrange(len(b))] = rnd.randrange(256)
+            p = tmp_path / "in.skp"; p.write_bytes(bytes(b))
+            out = tmp_path / "out.glb"
+            if out.exists(): out.unlink()
+            rc = cli.main(["convert", "--strict", str(p), str(out)])
+            assert rc in (0, 1, 2, 3), rc
+            if rc != 0:
+                assert not out.exists(), (f, i, rc)
