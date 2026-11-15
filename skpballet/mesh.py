@@ -1,5 +1,6 @@
 """Flatten a Model to triangles per material (metres, Y-up) and write GLB."""
 import json
+import heapq
 import math
 import struct
 from .scene import INCH
@@ -205,12 +206,14 @@ def _triangulate(loops3d, normal, _split, ang):
             return inside(mean) or any(inside(P2[i]) for i in h)
         rings = [outer] + [h for h in rings[1:] if keep(h)]
     # bridge holes (rightmost hole vertex first) into the outer ring
+    ringcoords = {P2[i] for i in outer}   # 2D positions of every node already in the ring
     for hole in sorted(rings[1:], key=lambda h: -max(P2[i][0] for i in h)):
         hi = max(hole, key=lambda i: P2[i][0])
         touch = None   # a hole vertex that coincides with a ring vertex (hole touching the boundary): splice there
         pos2 = {}
-        for kk, oi in enumerate(outer):
-            pos2.setdefault(P2[oi], []).append(kk)
+        if any(P2[hv] in ringcoords for hv in hole):   # positions are only needed when the hole can touch the ring
+            for kk, oi in enumerate(outer):
+                pos2.setdefault(P2[oi], []).append(kk)
         for hv in hole:
             for kk in pos2.get(P2[hv], ()):
                 hn = hole[(hole.index(hv) + 1) % len(hole)]
@@ -219,9 +222,11 @@ def _triangulate(loops3d, normal, _split, ang):
                     break
             if touch:
                 break
+        ringcoords.update(P2[i] for i in hole)   # the hole joins the ring below
         if touch:
             hi = touch[0]
-        cand = sorted(range(len(outer)), key=lambda k: (P2[outer[k]][0] - P2[hi][0]) ** 2 + (P2[outer[k]][1] - P2[hi][1]) ** 2)
+        hx, hy = P2[hi]
+        cand = heapq.nsmallest(60, range(len(outer)), key=lambda k: (P2[outer[k]][0] - hx) ** 2 + (P2[outer[k]][1] - hy) ** 2)   # only the nearest 60 are ever tried
         others = [h for h in rings[1:] if h is not hole]
         best = cand[0]
         if touch:
@@ -263,7 +268,7 @@ def _triangulate(loops3d, normal, _split, ang):
     refl = {v for v in idx if is_refl(v)}
     holes = len(rings) > 1
     grid = None   # uniform grid over the reflex vertices (outline without holes, many vertices): same candidate set, fewer tests
-    if not holes and len(refl) > 256:
+    if (len(idx) > 600) if holes else (len(refl) > 256):
         xs_ = [P2[v][0] for v in idx]; ys_ = [P2[v][1] for v in idx]
         gx0, gy0 = min(xs_), min(ys_)
         gn = int(len(refl) ** 0.5) or 1
@@ -275,7 +280,7 @@ def _triangulate(loops3d, normal, _split, ang):
 
         def cell(v):
             return cell_xy(P2[v][0], P2[v][1])
-        for v in refl:
+        for v in (idx if holes else refl):   # with holes every ring vertex is a candidate blocker (the bridged ring touches itself)
             grid.setdefault(cell(v), set()).add(v)
     alive = set(idx)   # with bridged holes the ring touches itself: test every remaining vertex, not only reflex ones
     cur, left, fails = idx[0], n, 0
@@ -288,7 +293,7 @@ def _triangulate(loops3d, normal, _split, ang):
             pa, pb, pc = P2[a], P2[cur], P2[c]
             if grid is not None:
                 c0, c1 = cell_xy(x0, y0), cell_xy(x1, y1)
-                cand = [r for gi in range(c0[0], c1[0] + 1) for gj in range(c0[1], c1[1] + 1) for r in grid.get((gi, gj), ()) if r in refl]
+                cand = [r for gi in range(c0[0], c1[0] + 1) for gj in range(c0[1], c1[1] + 1) for r in grid.get((gi, gj), ()) if r in (alive if holes else refl)]
             else:
                 cand = alive if holes else refl
             for r in cand:
