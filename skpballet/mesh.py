@@ -49,11 +49,15 @@ def _seg_cross(a, b, c, d):
            ((o3 > 1e-12 and o4 < -1e-12) or (o3 < -1e-12 and o4 > 1e-12))
 
 
-def _bridge_clear(P2, hi, oi, outer, hole, others):
+def _bridge_clear(P2, hi, oi, outer, hole, others, obb=None):
     a, b = P2[hi], P2[oi]
     x0, x1 = (a[0], b[0]) if a[0] < b[0] else (b[0], a[0])
     y0, y1 = (a[1], b[1]) if a[1] < b[1] else (b[1], a[1])
     for ring in [outer, hole] + others:
+        if obb is not None and id(ring) in obb:   # unchanged hole ring: skip when its box cannot touch the bridge box (same result, avoids the O(N) scan)
+            r0, r1, s0, s1 = obb[id(ring)]
+            if r1 < x0 or r0 > x1 or s1 < y0 or s0 > y1:
+                continue
         n = len(ring)
         c = P2[ring[0]]
         for k in range(n):
@@ -68,6 +72,10 @@ def _bridge_clear(P2, hi, oi, outer, hole, others):
     el = ex * ex + ey * ey
     if el > 0:
         for ring in [outer, hole] + others:
+            if obb is not None and id(ring) in obb:
+                r0, r1, s0, s1 = obb[id(ring)]
+                if r1 < x0 or r0 > x1 or s1 < y0 or s0 > y1:
+                    continue
             for i in ring:
                 q = P2[i]
                 if i in (hi, oi) or q == a or q == b or q[0] < x0 or q[0] > x1 or q[1] < y0 or q[1] > y1:
@@ -292,6 +300,10 @@ def _triangulate(loops3d, normal, _split, ang):
             return inside(mean) or any(inside(P2[i]) for i in h)
         rings = [outer] + [h for h in rings[1:] if keep(h)]
     # bridge holes (rightmost hole vertex first) into the outer ring
+    obb = {}
+    for h in rings[1:]:
+        xs = [P2[i][0] for i in h]; ys = [P2[i][1] for i in h]
+        obb[id(h)] = (min(xs), max(xs), min(ys), max(ys))
     ringcoords = {P2[i] for i in outer}   # 2D positions of every node already in the ring
     for hole in sorted(rings[1:], key=lambda h: -max(P2[i][0] for i in h)):
         hi = max(hole, key=lambda i: P2[i][0])
@@ -319,7 +331,7 @@ def _triangulate(loops3d, normal, _split, ang):
             cand = [touch[1]]
             best = touch[1]
         for k in cand[:60]:   # nearest outer vertex whose bridge does not cross the ring or another hole
-            if _locally_inside(P2, outer, k, P2[hi]) and _bridge_clear(P2, hi, outer[k], outer, hole, others):
+            if _locally_inside(P2, outer, k, P2[hi]) and _bridge_clear(P2, hi, outer[k], outer, hole, others, obb):
                 best = k
                 break
         hp = hole.index(hi)
