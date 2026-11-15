@@ -129,7 +129,17 @@ def _split_pinched(loop):
 def _merge_edge_sharing_holes(holes):
     """Two holes that share an edge enclose a zero-width wall: they are one hole. Without this one of them was left filled.
     Rings are merged along the shared edge (points compared exactly); no shared edge -> input returned unchanged."""
-    holes = [list(h) for h in holes]
+    seen = {}   # undirected edge -> index of the hole that has it; no edge in two different holes -> nothing to merge (linear fast path)
+    shared = set()
+    for hi, h in enumerate(holes):
+        for i in range(len(h)):
+            e = frozenset((h[i], h[(i + 1) % len(h)]))
+            if seen.setdefault(e, hi) != hi:
+                shared.add(seen[e]); shared.add(hi)
+    if not shared:
+        return holes
+    keep = [list(h) for hi, h in enumerate(holes) if hi not in shared]
+    holes = [list(h) for hi, h in enumerate(holes) if hi in shared]
     changed = True
     while changed and len(holes) > 1:
         changed = False
@@ -168,7 +178,7 @@ def _merge_edge_sharing_holes(holes):
                     break
             if changed:
                 break
-    return holes
+    return holes + keep
 
 
 def _merge_corner_touching_holes(holes):
