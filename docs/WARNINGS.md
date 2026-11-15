@@ -13,6 +13,7 @@ checks every one of them still does.
 ## Content in the file that is not in the export
 - `annotation(s)` ... `NOT in this export`: section planes, guide points, dimensions and screen texts are read, never exported.
 - `loose edge(s)`: edges bounding no face (curves, guides) are left out of a cache unless `--edges` is given.
+- `refer to empty definitions`: instances of a component or group with no faces, edges or instances; they place nothing (informational, not damage).
 - `hidden/off flag`: layers flagged hidden in the file are still drawn (the flag meaning is unverified).
 - `entity collection`: a record collection the reader does not understand; its content is missing.
 - `legacy file contains objects that are NOT read`: classes of 2013-2020 files that are skipped.

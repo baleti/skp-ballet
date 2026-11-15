@@ -303,4 +303,8 @@ def _load(skp):
     for r6 in top.find(0x1F6):
         for r in r6.find(0x1388):
             _entities(r, model.root, model)
+    empty = {d.id for d in model.defs.values() if not d.faces and not d.instances and not d.edges}
+    n_empty = sum(1 for d in list(model.defs.values()) + [model.root] for i in d.instances if i["def_id"] in empty)
+    if n_empty:
+        model.warnings.append("%d instance(s) refer to empty definitions (no faces, edges or instances): they place nothing in this export" % n_empty)
     return model

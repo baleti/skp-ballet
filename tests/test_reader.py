@@ -28,7 +28,7 @@ def test_counts_match_raw_tags(f):
     walk(parse_tlv(s.model_dat))
     c = m.counts()
     assert c["vertices"] == raw.get(0x9C4, 0) and c["edges"] == raw.get(0xBB8, 0) and c["faces"] == raw.get(0xDAC, 0)
-    assert not [w for w in m.warnings if "NOT read" not in w]   # annotation_layers_vff legitimately warns about unread annotation tags
+    assert not [w for w in m.warnings if "NOT read" not in w and "empty definitions" not in w]   # annotation_layers_vff legitimately warns about unread annotation tags
 
 
 def test_not_skp_rejected():
@@ -690,3 +690,10 @@ def test_glb_alignment_and_accessor_minmax_for_all_fixtures(tmp_path):
 def pytest_approx(x):
     import pytest
     return pytest.approx(x, abs=1e-6)
+
+
+def test_empty_definition_instance_warns():
+    m = load(open_skp(os.path.join(D, "annotation_layers_vff.skp")))
+    assert any("refer to empty definitions" in w for w in m.warnings)
+    m = load(open_skp(os.path.join(D, "nesting_2021.skp")))
+    assert not any("empty definitions" in w for w in m.warnings)
