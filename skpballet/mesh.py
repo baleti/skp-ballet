@@ -324,7 +324,7 @@ def _triangulate(loops3d, normal, _split, ang):
         if touch:
             hi = touch[0]
         hx, hy = P2[hi]
-        cand = heapq.nsmallest(60, range(len(outer)), key=lambda k: (P2[outer[k]][0] - hx) ** 2 + (P2[outer[k]][1] - hy) ** 2)   # only the nearest 60 are ever tried
+        dd = [(P2[o][0] - hx) ** 2 + (P2[o][1] - hy) ** 2 for o in outer]; cand = sorted(range(len(outer)), key=dd.__getitem__)[:60]   # only the nearest 60 are ever tried
         others = [h for h in rings[1:] if h is not hole]
         best = cand[0]
         if touch:
