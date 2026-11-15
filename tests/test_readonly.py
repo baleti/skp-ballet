@@ -749,3 +749,22 @@ def test_degenerate_instance_matrix_is_warned(kind, mat, word, tmp_path):
     m.root.instances = [dict(def_id=0, matrix=mat, name="x", id=None)]
     mesh.write_glb(m, str(tmp_path / "o.glb")) if kind == "glb" else cache.write_cache(m, str(tmp_path / "c"), "x.skp")
     assert any(word in w for w in m.warnings)
+
+
+def _tri_area(P, t):
+    return sum(abs((P[b][0] - P[a][0]) * (P[c][1] - P[a][1]) - (P[c][0] - P[a][0]) * (P[b][1] - P[a][1])) / 2 for a, b, c in t)
+
+
+@pytest.mark.parametrize("hole,area", [([(1, 1, 0), (2, 1, 0), (2, 2, 0)], 15.5), ([(1, 1, 0), (2, 2, 0), (2, 1, 0)], 15.5),
+                                       ([(1, 1, 0), (2, 1, 0), (2, 2, 0), (1, 2, 0)], 15.0), ([(1, 1, 0), (3, 1, 0), (2, 3, 0)], 14.0)])
+def test_hole_corner_on_the_bridge_diagonal_keeps_the_hole(hole, area):
+    """A hole whose bridge to the outer ring would pass exactly through another hole corner used to fill the hole (area 16)."""
+    from skpballet import mesh
+    P, t = mesh.triangulate([[(0, 0, 0), (4, 0, 0), (4, 4, 0), (0, 4, 0)], hole], (0, 0, 1))
+    assert abs(_tri_area(P, t) - area) < 1e-6
+
+
+def test_hole_outside_the_outer_loop_is_dropped():
+    from skpballet import mesh
+    P, t = mesh.triangulate([[(0, 0, 0), (4, 0, 0), (4, 4, 0), (0, 4, 0)], [(10, 10, 0), (11, 10, 0), (11, 11, 0)]], (0, 0, 1))
+    assert abs(_tri_area(P, t) - 16.0) < 1e-6

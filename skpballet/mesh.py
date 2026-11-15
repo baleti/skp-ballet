@@ -62,6 +62,17 @@ def _bridge_clear(P2, hi, oi, outer, hole, others):
                     (c[1] < y0 and d[1] < y0) or (c[1] > y1 and d[1] > y1)) and _seg_cross(a, b, c, d):
                 return False
             c = d
+    # a ring vertex lying ON the bridge (e.g. a diagonal through a hole corner) makes a degenerate ring: reject
+    ex, ey = b[0] - a[0], b[1] - a[1]
+    el = ex * ex + ey * ey
+    if el > 0:
+        for ring in [outer, hole] + others:
+            for i in ring:
+                q = P2[i]
+                if i in (hi, oi) or q == a or q == b or q[0] < x0 or q[0] > x1 or q[1] < y0 or q[1] > y1:
+                    continue
+                if abs(ex * (q[1] - a[1]) - ey * (q[0] - a[0])) <= 1e-9 * el ** 0.5 and 0 < ((q[0] - a[0]) * ex + (q[1] - a[1]) * ey) < el:
+                    return False
     return True
 
 
@@ -161,6 +172,18 @@ def triangulate(loops3d, normal, _split=True):
     if not rings:
         return P3, []
     outer = rings[0]
+    if len(rings) > 1:   # a hole entirely outside the outer ring (corrupt/odd file) would be bridged into garbage area: drop it
+        def inside(pt):
+            x, y, c = pt[0], pt[1], False
+            for k in range(len(outer)):
+                a, b = P2[outer[k - 1]], P2[outer[k]]
+                if (a[1] > y) != (b[1] > y) and x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]:
+                    c = not c
+            return c
+        def keep(h):
+            mean = (sum(P2[i][0] for i in h) / len(h), sum(P2[i][1] for i in h) / len(h))
+            return inside(mean) or any(inside(P2[i]) for i in h)
+        rings = [outer] + [h for h in rings[1:] if keep(h)]
     # bridge holes (rightmost hole vertex first) into the outer ring
     for hole in sorted(rings[1:], key=lambda h: -max(P2[i][0] for i in h)):
         hi = max(hole, key=lambda i: P2[i][0])
