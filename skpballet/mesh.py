@@ -343,10 +343,15 @@ def _compose(a, b):
 IDENT = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1.0]
 
 
-def definition_tris(d):
-    """-> {mat_id: [triangle tuples of 3 points in inches]}"""
+def definition_tris(d, warnings=None):
+    """-> {mat_id: [triangle tuples of 3 points in inches]}; faces with vertex ids missing from the definition are
+    built from the remaining vertices (or skipped) and reported once in `warnings`"""
     out = {}
     for f in d.faces:
+        if warnings is not None and any(v not in d.vertices for lp in f["loops"] for v in lp):
+            w = "face refers to vertex ids missing from its definition (corrupt file): such faces are incomplete or NOT placed"
+            if w not in warnings:
+                warnings.append(w)
         loops = [[d.vertices[v] for v in lp if v in d.vertices] for lp in f["loops"]]
         loops = [l for l in loops if l]
         if not loops:
@@ -408,7 +413,7 @@ def flatten(model, max_depth=24, max_tris=None, lines=None):
                 model.warnings.append("depth/size limit reached")
             return
         if id(d) not in cache:   # object identity: the root (id 0) and a real definition with id 0 must not share an entry
-            cache[id(d)] = definition_tris(d)
+            cache[id(d)] = definition_tris(d, model.warnings)
         emit(cache[id(d)], m)
         if lines is not None:
             for a, b in d.edges.values():

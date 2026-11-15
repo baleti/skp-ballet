@@ -768,3 +768,12 @@ def test_hole_outside_the_outer_loop_is_dropped():
     from skpballet import mesh
     P, t = mesh.triangulate([[(0, 0, 0), (4, 0, 0), (4, 4, 0), (0, 4, 0)], [(10, 10, 0), (11, 10, 0), (11, 11, 0)]], (0, 0, 1))
     assert abs(_tri_area(P, t) - 16.0) < 1e-6
+
+
+@pytest.mark.parametrize("kind", ["glb", "cache"])
+def test_face_with_missing_vertex_ids_is_warned(kind, tmp_path):
+    from skpballet import mesh, cache, scene
+    m = scene.Model(); m.root = scene.Definition(-1, "root"); m.root.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    m.root.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1)), dict(id=1, loops=[[0, 1, 99]], mat=None, normal=(0, 0, 1))]
+    mesh.write_glb(m, str(tmp_path / "o.glb")) if kind == "glb" else cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    assert any("missing from its definition" in w for w in m.warnings)

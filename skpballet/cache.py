@@ -52,7 +52,7 @@ def build(model, max_depth=24, edges=False):
                 return
             ck = -1 if d.id == -1 else id(d)   # identity key (root id 0 vs a real definition id 0); -1 is the per-element loose-geometry wrapper
             if ck not in cache:
-                cache[ck] = mesh.definition_tris(d)
+                cache[ck] = mesh.definition_tris(d, model.warnings)
             flip = _flips(m)
             for mat, tris in cache[ck].items():
                 b = batch("tri", mat if mat in model.materials else None)
