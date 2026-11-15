@@ -1161,3 +1161,13 @@ def test_triangulate_random_degenerate_faces_never_crash():
         loops = [[(rnd.randint(0, 4), rnd.randint(0, 4), rnd.choice([0, 0, 0, 1])) for _ in range(rnd.randint(3, 8))] for _ in range(rnd.randint(1, 5))]
         P, tr = mesh.triangulate(loops, rnd.choice([(0, 0, 1), (0, 0, -1), (0, 0, 0), (1, 1, 1)]))
         assert all(0 <= i < len(P) for t in tr for i in t)
+
+
+def test_module_entry_points_agree(tmp_path):
+    """python -m skpballet and python -m skpballet.cli must both run (the second once exited 0 silently) and print the same info"""
+    import subprocess, sys
+    f = sorted(glob.glob(os.path.join(os.path.dirname(__file__), "data", "*.skp")))[0]
+    env = dict(os.environ, PYTHONPATH=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    outs = [subprocess.run([sys.executable, "-m", m, "info", f], capture_output=True, env=env) for m in ("skpballet", "skpballet.cli")]
+    assert all(o.returncode == 0 and o.stdout for o in outs)
+    assert outs[0].stdout == outs[1].stdout
