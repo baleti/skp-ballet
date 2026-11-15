@@ -777,3 +777,15 @@ def test_face_with_missing_vertex_ids_is_warned(kind, tmp_path):
     m.root.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1)), dict(id=1, loops=[[0, 1, 99]], mat=None, normal=(0, 0, 1))]
     mesh.write_glb(m, str(tmp_path / "o.glb")) if kind == "glb" else cache.write_cache(m, str(tmp_path / "c"), "x.skp")
     assert any("missing from its definition" in w for w in m.warnings)
+
+
+@pytest.mark.parametrize("holes,area", [
+    ([[(2, 2), (4, 2), (4, 4), (2, 4)], [(4, 4), (6, 4), (6, 6), (4, 6)]], 92.0),   # holes sharing one corner
+    ([[(3, 0), (5, 0), (5, 2), (3, 2)]], 96.0),                                     # hole sharing a stretch of the outer edge
+    ([[(3, 0), (5, 2), (1, 2)]], 96.0),                                             # hole vertex on the outer edge
+    ([[(2, 2), (8, 2), (8, 8), (2, 8)]], 64.0)])                                    # big hole (an island inside it is a separate face)
+def test_touching_holes_keep_exact_area(holes, area):
+    from skpballet import mesh
+    L = lambda pts: [(x, y, 0) for x, y in pts]
+    P, t = mesh.triangulate([L([(0, 0), (10, 0), (10, 10), (0, 10)])] + [L(h) for h in holes], (0, 0, 1))
+    assert abs(_tri_area(P, t) - area) < 1e-6
