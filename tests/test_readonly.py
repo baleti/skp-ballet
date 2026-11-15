@@ -1045,3 +1045,23 @@ def test_nesting_depth_limit_is_reported_and_strict_refuses(tmp_path):
     with pytest.raises(mesh.StrictTruncation):
         mesh.write_glb(deep2, str(tmp_path / "c.glb"), strict=True)
     assert not (tmp_path / "c.glb").exists()
+
+
+def test_exports_are_byte_identical_across_hash_seeds(tmp_path):
+    """convert and cache output must not depend on dict/set order (PYTHONHASHSEED): two seeds, GLB and every cache file"""
+    import glob, hashlib, subprocess, sys
+    D = os.path.join(os.path.dirname(__file__), "data")
+    for src in (os.path.join(D, "nesting_2021.skp"), os.path.join(D, "legacy", "chair_and_table.skp")):
+        sums = []
+        for seed in ("1", "12345"):
+            env = dict(os.environ, PYTHONHASHSEED=seed)
+            g = tmp_path / ("g%s.glb" % seed); c = tmp_path / ("c%s" % seed)
+            for args in (["convert", src, str(g)], ["cache", src, str(c)]):
+                r = subprocess.run([sys.executable, "-m", "skpballet"] + args, env=env, capture_output=True,
+                                   cwd=os.path.join(os.path.dirname(__file__), ".."))
+                assert r.returncode == 0, r.stderr
+            h = hashlib.sha1(g.read_bytes())
+            for p in sorted(glob.glob(str(c / "*"))):
+                h.update(open(p, "rb").read())
+            sums.append(h.hexdigest())
+        assert sums[0] == sums[1], src
