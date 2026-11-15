@@ -24,11 +24,13 @@ colours; tag visibility flags are not used. All edges are drawn (hidden/soft edg
 components or groups but fails the strict tree rules, `info` shows the warning "instances are NOT placed" and only the first entity
 list is exported.
 Not yet: textures/UVs, text/dimensions/sections, scenes/cameras, writing (the tool never writes a .skp). Face
-triangulation handles holes, pinched loops, spikes and T-touching vertices (area check on real files: about 0.002
-percent of faces off by more than 0.1 percent). See docs/FORMAT.md; every warning the tool can raise is explained in docs/WARNINGS.md.
+triangulation handles holes, pinched loops, spikes, T-touching vertices, holes sharing an edge (merged) and chains of
+corner-touching holes (fallback). Known wrong: about 1 percent of dense random cell-hole sets (self-touching merged rings),
+which the area self-check warns about (an earlier real-file area check: about 0.002 percent of faces off by more than 0.1
+percent; not re-measured since the hole changes, no real files on this host). See docs/FORMAT.md; every warning the tool can raise is explained in docs/WARNINGS.md.
 
 The viewer loads three.js from `../rvt-ballet/web/vendor` or `$SKP_BALLET_VENDOR`.
-Tests: `python3 -m pytest tests` (296 collected, about 2 minutes). Licenses: LICENSES.md.
+Tests: `python3 -m pytest tests` (657 collected, about 2 to 4 minutes). Licenses: LICENSES.md.
 
 ## Truncated or partial files
 
