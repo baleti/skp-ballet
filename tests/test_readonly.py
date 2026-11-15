@@ -736,3 +736,16 @@ def test_non_finite_instance_matrix_is_refused_never_written(kind, mat, tmp_path
     with pytest.raises(ValueError):
         mesh.write_glb(m, str(out)) if kind == "glb" else cache.write_cache(m, str(out), "x.skp")
     assert not out.exists() or (out.is_dir() and not (out / "meta.json").exists())
+
+
+@pytest.mark.parametrize("kind", ["glb", "cache"])
+@pytest.mark.parametrize("mat,word", [([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0], "scale 0"),
+                                       ([0] * 12 + [1], "singular")])
+def test_degenerate_instance_matrix_is_warned(kind, mat, word, tmp_path):
+    from skpballet import mesh, cache, scene
+    m = scene.Model(); m.root = scene.Definition(-1, "root")
+    d = scene.Definition(0, "d"); d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (0, 1, 0)}
+    d.faces = [dict(id=0, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]; m.defs[0] = d
+    m.root.instances = [dict(def_id=0, matrix=mat, name="x", id=None)]
+    mesh.write_glb(m, str(tmp_path / "o.glb")) if kind == "glb" else cache.write_cache(m, str(tmp_path / "c"), "x.skp")
+    assert any(word in w for w in m.warnings)

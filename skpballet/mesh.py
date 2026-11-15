@@ -344,6 +344,18 @@ def _budget_warning(model, n):
         model.warnings.append(msg)
 
 
+def _degenerate(m):
+    """warning text if an instance transform is zero-scale (read as 1.0) or singular (flattens the geometry), else None"""
+    a = m[:9]
+    det = (a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6])
+           + a[2] * (a[3] * a[7] - a[4] * a[6]))
+    if m[12] == 0:
+        return "instance with scale 0 read as scale 1 (corrupt or unusual file)"
+    if det == 0:
+        return "instance with a singular transform: its geometry is flattened (corrupt or unusual file)"
+    return None
+
+
 def flatten(model, max_depth=24, max_tris=None, lines=None):
     """Returns {mat_id: flat list of floats (x,y,z per vertex, metres, Y-up)}.
     If `lines` is a list, edge segments (6 floats each, same space) are appended to it."""
@@ -391,6 +403,9 @@ def flatten(model, max_depth=24, max_tris=None, lines=None):
                 if w not in model.warnings:
                     model.warnings.append(w)
                 continue
+            w = _degenerate(inst["matrix"])
+            if w and w not in model.warnings:
+                model.warnings.append(w)
             walk(sub, _compose(m, inst["matrix"]), depth + 1)
         path.discard(id(d))
 

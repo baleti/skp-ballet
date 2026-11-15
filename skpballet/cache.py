@@ -17,6 +17,9 @@ def _elements(model):
     for inst in model.root.instances:
         sub = model.defs.get(inst["def_id"])
         if sub is not None:
+            w = mesh._degenerate(inst["matrix"])
+            if w and w not in model.warnings:
+                model.warnings.append(w)
             kind = "Group" if sub.is_group else "Component"
             els.append((inst.get("name") or sub.name or kind, "Skp" + kind, kind, sub, _compose(IDENT, inst["matrix"]), True))
     return els
@@ -85,6 +88,9 @@ def build(model, max_depth=24, edges=False):
                     if w not in model.warnings:
                         model.warnings.append(w)
                     continue
+                w = mesh._degenerate(inst["matrix"])
+                if w and w not in model.warnings:
+                    model.warnings.append(w)
                 walk(s, _compose(m, inst["matrix"]), depth + 1, False)
             path.discard(id(d))
         if sub_only:
