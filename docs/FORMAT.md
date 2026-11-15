@@ -467,3 +467,15 @@ stops with a "NOT placed" warning (GLB extras, cache meta, `--strict` exit 3 for
 12-triangle definition and 0.56 KB peak RSS per triangle (960k triangles: 541 MB, 12 s, 32 MB GLB), so the triangle cap projects to about 2.8 GB
 and a 160 MB GLB; a 500k-placement instance bomb takes 20 to 31 s and under 0.6 GB. Inputs: regular files only, at most 4 GiB; zip members declaring
 more than 2 GiB are refused. The limits are guesses from fixtures, not from large real models; a legitimate larger model is truncated WITH a warning.
+
+## Triangulation hazards found by fuzzing (2026-11-15)
+- A hole whose bridge to the outer ring runs exactly through another hole corner (e.g. a diagonal through a right-triangle
+  hole) produced a degenerate ring and the hole was FILLED (4x4 square, triangle hole: area 16.0 instead of 15.5).
+  `_bridge_clear` now rejects any bridge passing through a ring vertex; `tools/hole_fuzz_grid.py` (integer-grid holes)
+  found the old code wrong in 82 of 3000 cases, the current code 0 of 12000.
+- A hole entirely outside the outer loop is dropped (it used to add garbage area).
+- Known wrong, not fixed: two holes sharing an edge segment (area above the face), a hole sharing two edges with the outer
+  loop (area too large). SketchUp probably merges such loops, unverified. A per-face area self-check (1% tolerance, triangle
+  area projected on the normal vs outer minus holes) now adds a warning to the GLB extras and cache meta.
+- Instance transforms: NaN/inf/absurd values refuse the export (no GLB with NaN); scale 0 is read as 1 and singular
+  matrices flatten the geometry, both now warned. Faces naming missing vertex ids are warned.
