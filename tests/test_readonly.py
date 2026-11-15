@@ -1150,3 +1150,14 @@ def test_hole_vertex_on_outer_edge_is_exact_without_the_shrink_ladder():
     loops = [[(0, 0, 0.0), (8, 0, 0.0), (8, 8, 0.0), (0, 8, 0.0)]] + [[(x, y, 0.0) for x, y in t] for t in hs]
     P, tr = mesh.triangulate(loops, (0, 0, 1))
     assert abs(_tri_area(P, tr) - 62.5) < 1e-9
+
+
+def test_triangulate_random_degenerate_faces_never_crash():
+    """random 1-5 loop faces of integer points (duplicates, collinear, non-planar, zero normal): no exception, indices in range"""
+    import random
+    from skpballet import mesh
+    rnd = random.Random(21)
+    for _ in range(400):
+        loops = [[(rnd.randint(0, 4), rnd.randint(0, 4), rnd.choice([0, 0, 0, 1])) for _ in range(rnd.randint(3, 8))] for _ in range(rnd.randint(1, 5))]
+        P, tr = mesh.triangulate(loops, rnd.choice([(0, 0, 1), (0, 0, -1), (0, 0, 0), (1, 1, 1)]))
+        assert all(0 <= i < len(P) for t in tr for i in t)
