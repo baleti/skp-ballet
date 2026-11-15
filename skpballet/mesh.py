@@ -130,7 +130,7 @@ def triangulate(loops3d, normal, _split=True):
     A face with holes whose triangle area is off (exact ties/colinearity in the 2D working plane confuse the bridge and ear
     tests) is retried with the 2D basis rotated by a few arbitrary angles; the best result wins."""
     P, tr = _triangulate(loops3d, normal, _split, 0.0)
-    if len(loops3d) > 1 and _area_mismatch(loops3d, normal, P, tr, 1e-6):
+    if len(loops3d) > 1 and len(P) <= 3000 and _area_mismatch(loops3d, normal, P, tr, 1e-6):   # size cap: retries cost up to 5x on hopeless faces
         best, be = (P, tr), _area_err(loops3d, normal, P, tr)
         for ang in (0.3711, 1.0173, 2.2391, 4.0877):
             P2, t2 = _triangulate(loops3d, normal, _split, ang)
@@ -409,7 +409,19 @@ def _area_err(loops, nrm, P, tr):
     def proj(v):
         return abs((v[0] * nrm[0] + v[1] * nrm[1] + v[2] * nrm[2]) / nl)
     outer = proj(_newell(loops[0]))
-    want = outer - sum(proj(_newell(h)) for h in loops[1:])
+    ax = max(range(3), key=lambda i: abs(nrm[i]))   # drop the dominant normal axis: a fair 2D view for point-in-polygon
+    i0, i1 = [k for k in range(3) if k != ax]
+    def inside(pt):
+        x, y, c = pt[i0], pt[i1], False
+        o = loops[0]
+        for k in range(len(o)):
+            a, b = o[k - 1], o[k]
+            if (a[i1] > y) != (b[i1] > y) and x < (b[i0] - a[i0]) * (y - a[i1]) / (b[i1] - a[i1]) + a[i0]:
+                c = not c
+        return c
+    # holes entirely outside the outer loop are dropped by triangulate(), so they do not count here either
+    want = outer - sum(proj(_newell(h)) for h in loops[1:]
+                       if inside(tuple(sum(v[k] for v in h) / len(h) for k in range(3))) or any(inside(v) for v in h))
     got = 0.0
     for a, b, c in tr:
         pa, pb, pc = P[a], P[b], P[c]
