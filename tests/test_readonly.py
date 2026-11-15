@@ -1097,3 +1097,23 @@ def test_cache_meta_records_the_glb_hash_so_mixed_pairs_are_detectable(tmp_path)
     g = (tmp_path / "c" / "model.glb").read_bytes()
     meta = json.loads((tmp_path / "c" / "meta.json").read_text())
     assert meta["glbSha1"] == hashlib.sha1(g).hexdigest() and meta["glbBytes"] == len(g)
+
+
+def test_verify_cache_tool_accepts_good_and_flags_mixed_or_partial(tmp_path):
+    import shutil, subprocess, sys
+    from skpballet import cli
+    root = os.path.join(os.path.dirname(__file__), "..")
+    D = os.path.join(os.path.dirname(__file__), "data")
+    a, b = tmp_path / "a", tmp_path / "b"
+    assert cli.main(["cache", os.path.join(D, "nesting_2021.skp"), str(a)]) == 0
+    assert cli.main(["cache", os.path.join(D, "legacy", "chair_and_table.skp"), str(b)]) == 0
+    def run(d):
+        return subprocess.run([sys.executable, os.path.join(root, "tools", "verify_cache.py"), str(d)], capture_output=True, text=True).returncode
+    assert run(a) == 0 and run(b) == 0
+    shutil.copy(b / "model.glb", a / "model.glb")                    # glb from another writer
+    assert run(a) == 1
+    c = tmp_path / "c"; shutil.copytree(b, c)
+    data = (c / "model.glb").read_bytes(); (c / "model.glb").write_bytes(data[:-7])   # truncated glb
+    assert run(c) == 1
+    (c / "meta.json").unlink()
+    assert run(c) == 2

@@ -72,6 +72,7 @@ triangles) loads in the front-end as "0 elements, 0 triangles" (since the 2026-1
 - `tools/skp_bytes_diff.py A.skp B.skp`: byte ranges and zip members that differ (decompressed model.dat for 2021+).
 - `tools/regress_diff.py REV [DIR_OR_FILES]`: run before every reader change; lists fixtures whose decoded content changed since git revision REV (throwaway worktree, names only). It also takes paths, so local-only private files can be checked without their names leaving the machine.
 - `tools/area_check.py FILE.skp`: face triangulation area self-check.
+- `tools/verify_cache.py DIR`: checks a cache folder (GLB header, meta.json glbSha1/glbBytes match, JSON parses); exit 0/1/2.
 
 Measured limits of "reads back without error" (single-bit flips): decoded output changed silently in 17 percent of flips in
 decompressed 2021+ model.dat and 1.9 percent in legacy files; see docs/FORMAT.md and docs/WRITER-REQUIREMENTS.md.
