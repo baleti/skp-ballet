@@ -1019,3 +1019,29 @@ def test_cell_holes_sharing_edges_and_corners_fuzz():
     assert not bad_edge_only, bad_edge_only[:1]   # edge-sharing without corner-only contacts must be exact
     # corner-only contact chains: spliced-ring fallback fixes most; a small rest with complex self-touching rings stays wrong (warned)
     assert tested > 250 and len(bad) * 100 <= tested * 3, (len(bad), tested)
+
+
+def _chain_model(n):
+    from skpballet import scene
+    m = scene.Model(); m.root = scene.Definition(0, "<model>")
+    prev = m.root
+    for k in range(1, n + 1):
+        d = scene.Definition(k, "d%d" % k); m.defs[k] = d
+        d.vertices = {0: (0, 0, 0), 1: (1, 0, 0), 2: (1, 1, 0)}
+        d.faces = [dict(id=1, loops=[[0, 1, 2]], mat=None, normal=(0, 0, 1))]
+        prev.instances = [dict(def_id=k, matrix=[1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1.0], name="n", id=None)]
+        prev = d
+    return m
+
+
+def test_nesting_depth_limit_is_reported_and_strict_refuses(tmp_path):
+    from skpballet import mesh
+    ok = _chain_model(20)
+    assert mesh.write_glb(ok, str(tmp_path / "a.glb")) == 20 and not ok.warnings   # one triangle per level, all placed
+    deep = _chain_model(40)
+    n = mesh.write_glb(deep, str(tmp_path / "b.glb"))
+    assert 0 < n < 40 and "depth/size limit reached" in deep.warnings
+    deep2 = _chain_model(40)
+    with pytest.raises(mesh.StrictTruncation):
+        mesh.write_glb(deep2, str(tmp_path / "c.glb"), strict=True)
+    assert not (tmp_path / "c.glb").exists()
